@@ -19,6 +19,17 @@ fetch = liftA go where
    go 1 = Stop
 
 
+data Registers = R { acc :: Signed 9, l :: Signed 9, r :: Signed 9 }
+  deriving Show
+
+emptyRegs = R 0 0 0
+
+processor :: Registers -> Signal Instr -> Signal Registers
+processor = mealy step where
+  step rs (Alu op a1 a2) = (rs{acc = alu op a1 a2}, rs)
+  step rs Stop = (rs, rs)
+
+
 testInput :: Signal (OP,Signed 9,Signed 9)
 testInput = stimuliGenerator $(v [(Add,1 :: Signed 9,1 :: Signed 9),(Sub,2,2),(Add,3,3),(Sub,4,4)])
 
