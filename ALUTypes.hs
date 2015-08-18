@@ -6,5 +6,11 @@ data OP = Add | Sub
   deriving (Show, Read, Eq, Ord, Bounded, Enum)
 
 deriveLift ''OP
---instance Lift OP where
---  lift a = undefined
+
+
+data Instr = Alu OP (Signed 9) (Signed 9)
+           | Stop
+  deriving (Show, Eq, Ord)
+
+
+deriveLift ''Instr

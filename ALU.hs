@@ -13,13 +13,6 @@ alu Sub a1 a2 = a1 - a2
 topEntity :: Signal OP -> Signal (Signed 9) -> Signal (Signed 9) -> Signal (Signed 9)
 topEntity = liftA3 alu
 
-
-
-data Instr = Alu OP (Signed 9) (Signed 9)
-           | Stop
-  deriving Show
-
-
 fetch :: Signal Word -> Signal Instr
 fetch = liftA go where
    go 0 = Alu Add 4 5
