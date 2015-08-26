@@ -17,14 +17,15 @@ data Chopped = OO | OI | IO | II | Done
 chop :: Signal (Unsigned 24) -> Signal' SerialClock Chopped
 chop = (liftA2 go around) . oversampling 0 0 where
   go _ 0 = Done
-  go (mask, offs) n = toChopped ((n .&. mask) `shiftR` offs)
-  around = register' serialClock (3 :: Unsigned 24, 0) (liftA shift2 around)
+  go (_, _, over) n | n .&. over == 0 = Done
+  go (mask, offs, over) n = toChopped ((n .&. mask) `shiftR` offs)
   toChopped 0 = OO
   toChopped 1 = OI
   toChopped 2 = IO
   toChopped 3 = II
-  shift2 (12582912, _) = (3, 0)
-  shift2 (n, offs) = (n `shiftL` 2, offs + 2)
+  around = register' serialClock (3 :: Unsigned 24, 0, 0b111111111111111111111111) (liftA shift2 around)
+  shift2 (12582912, _, _) = (3, 0, 0b111111111111111111111111)
+  shift2 (n, offs, over) = (n `shiftL` 2, offs + 2, over `shiftL` 2)
 
 topEntity :: Signal (Unsigned 24) -> Signal' SerialClock Chopped
 topEntity = chop
