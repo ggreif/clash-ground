@@ -23,9 +23,10 @@ chop = (liftA2 go around) . oversampling 0 0 where
   toChopped 1 = OI
   toChopped 2 = IO
   toChopped 3 = II
-  around = register' serialClock (3 :: Unsigned 24, 0, 0b111111111111111111111111) (liftA shift2 around)
-  shift2 (12582912, _, _) = (3, 0, 0b111111111111111111111111)
+  around = register' serialClock (3 :: Unsigned 24, 0, all24bits) (liftA shift2 around)
+  shift2 (12582912, _, _) = (3, 0, all24bits)
   shift2 (n, offs, over) = (n `shiftL` 2, offs + 2, over `shiftL` 2)
+  all24bits = 0b111111111111111111111111
 
 topEntity :: Signal (Unsigned 24) -> Signal' SerialClock Chopped
 topEntity = chop
