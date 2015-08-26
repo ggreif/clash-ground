@@ -14,7 +14,6 @@ oversampling a b = register' serialClock a . unsafeSynchronizer systemClock seri
 data Chopped = O | I | Done
   deriving (Show, Read, Bounded, Eq, Ord, Enum)
 
---chop :: Enum a => Signal a -> Signal Chopped
 chop :: Signal (Unsigned 24) -> Signal' SerialClock Chopped
 chop = oversampling Done Done . (liftA go) where
   go 0 = Done
@@ -22,8 +21,17 @@ chop = oversampling Done Done . (liftA go) where
   toChopped 0 = O
   toChopped 1 = I
 
+
+chop' :: Signal (Unsigned 24) -> Signal' SerialClock Chopped
+chop' = (liftA2 go around) . oversampling 0 0 where
+  go _ 0 = Done
+  go mask n = toChopped (n .&. mask)
+  around = register' serialClock (3 :: Unsigned 24) (liftA (`shiftL` 2) around)
+  toChopped 0 = O
+  toChopped 1 = I
+
 topEntity :: Signal (Unsigned 24) -> Signal' SerialClock Chopped
 topEntity = chop
 
 
-t1 = chop $ fromList [0, 20, 0, 0]
+t1 = chop' $ fromList [0, 20, 0, 0]
