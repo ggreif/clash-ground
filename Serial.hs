@@ -3,6 +3,7 @@
 import CLaSH.Prelude
 import CLaSH.Signal.Explicit
 import CLaSH.Prelude.Mealy
+import qualified Data.List as List
 
 type SerialClock = Clk "system" 100
 serialClock :: SClock SerialClock
@@ -35,19 +36,39 @@ topEntity = chop
 
 t1 = chop $ fromList [0, 20, 0, 0]
 t2 = chop' $ fromList $ cycle [0b0000010111]
-t3 = chop' $ fromList $ cycle [ 0b101111111111111111111101
-                              , 0b101100000000000000001101 ]
+t3 = chop' $ fromList ( twelve 0b101111111111111111111101
+                List.++ twelve 0b101100000000000000001101
+                List.++ twelve 0b101100111001111001111101
+                List.++ twelve 0b000000000000000000000000)
 
+t3' = inverse t3
+
+
+twelve :: Unsigned 24 -> [Unsigned 24]
+twelve n = List.take 12 (cycle [n])
 
 -- using a mealy machine
 chop' :: Signal' SerialClock (Unsigned 24) -> Signal' SerialClock Chopped
 chop' = mealy' serialClock go start where
-  start = (0, 22)
-  go (0, 0) i = ((i, 22), Done)
-  go (0, offs) _ = ((0, offs - 2), Done)
-  go (old, 0) i = ((i, 22), toChopped $ old .&. 0b11)
-  go (old, offs) _ = ((old `shiftR` 2, offs - 2), toChopped $ old .&. 0b11)
+  start = (0, 11)
+  go (0, 0) i = ((i, 11), Done)
+  go (0, offs) _ = ((0, offs - 1), Done)
+  go (old, 0) i = ((i, 11), toChopped $ old .&. 0b11)
+  go (old, offs) _ = ((old `shiftR` 2, offs - 1), toChopped $ old .&. 0b11)
   toChopped 0 = OO
   toChopped 1 = OI
   toChopped 2 = IO
   toChopped 3 = II
+
+
+inverse :: Signal' SerialClock Chopped -> Signal' SerialClock (Unsigned 24)
+inverse = mealy' serialClock go start where
+  start = (0, 0, 11)
+  go (acc, _, 0) Done = ((0, acc, 11), acc)
+  go (acc, _, 0) chop = ((0, new, 11), new) where new = (acc `shiftL` 2) .|. fromChopped chop
+  go (acc, old, n) Done = ((acc, old, n - 1), old)
+  go (acc, old, n) chop = (((acc `shiftL` 2) .|. fromChopped chop, old, n - 1), old)
+  fromChopped OO = 0
+  fromChopped OI = 1
+  fromChopped IO = 2
+  fromChopped II = 3
