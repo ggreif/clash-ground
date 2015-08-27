@@ -16,7 +16,8 @@ topEntity = liftA3 alu
 fetch :: Signal Word -> Signal Instr
 fetch = liftA go where
    go 0 = Alu Add 4 5
-   go 1 = Stop
+   go 1 = Alu Sub 42 25
+   go 2 = Stop
 
 
 data Registers = R { acc :: Signed 9, l :: Signed 9, r :: Signed 9 }
