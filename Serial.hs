@@ -35,19 +35,19 @@ topEntity = chop
 
 t1 = chop $ fromList [0, 20, 0, 0]
 t2 = chop' $ fromList $ cycle [0b0000010111]
-t3 = chop' $ fromList $ cycle [0b101111111111111111111101]
+t3 = chop' $ fromList $ cycle [ 0b101111111111111111111101
+                              , 0b101100000000000000001101 ]
 
 
 -- using a mealy machine
 chop' :: Signal' SerialClock (Unsigned 24) -> Signal' SerialClock Chopped
 chop' = mealy' serialClock go start where
   start = (0, 22)
-  go (0, offs@0) i = ((i, 22), Done)
+  go (0, 0) i = ((i, 22), Done)
   go (0, offs) _ = ((0, offs - 2), Done)
-  go (old, offs@0) i = ((i, 22), toChopped $ old .&. 0b11)
+  go (old, 0) i = ((i, 22), toChopped $ old .&. 0b11)
   go (old, offs) _ = ((old `shiftR` 2, offs - 2), toChopped $ old .&. 0b11)
   toChopped 0 = OO
   toChopped 1 = OI
   toChopped 2 = IO
   toChopped 3 = II
-
