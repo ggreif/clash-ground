@@ -2,6 +2,7 @@
 
 import CLaSH.Prelude
 import CLaSH.Signal.Explicit
+import CLaSH.Prelude.Mealy
 
 type SerialClock = Clk "system" 100
 serialClock :: SClock SerialClock
@@ -32,4 +33,13 @@ topEntity :: Signal (Unsigned 24) -> Signal' SerialClock Chopped
 topEntity = chop
 
 
-t1 = chop $ fromList [0, 20, 0, 0]
+t1 = chop' $ fromList [0, 20, 0, 0]
+
+
+-- using a mealy machine
+chop' :: Signal' SerialClock (Unsigned 24) -> Signal' SerialClock (Unsigned 24)
+chop' = mealy' serialClock go start where
+  start = (0, 3, 0, all24bits)
+  all24bits = 0b111111111111111111111111 :: Unsigned 24
+  go (old, mask@12582912, offs, _) i = ((i, 3, 0, all24bits), (old .&. mask) `shiftR` offs)
+  go (old, mask, offs, relevant) _ = ((old, mask `shiftL` 2, offs + 2, relevant `shiftL` 2), (old .&. mask) `shiftR` offs)
