@@ -41,10 +41,11 @@ t3 = chop' $ fromList $ cycle [0b101111111111111111111101]
 -- using a mealy machine
 chop' :: Signal' SerialClock (Unsigned 24) -> Signal' SerialClock Chopped
 chop' = mealy' serialClock go start where
-  start = (0, 0)
-  --go (old, offs@10) i = ((i, 0), toChopped $ old .&. 0b11)
-  go (old, offs@22) i = ((i, 0), toChopped $ old .&. 0b11)
-  go (old, offs) _ = ((old `shiftR` 2, offs + 2), toChopped $ old .&. 0b11)
+  start = (0, 22)
+  go (0, offs@0) i = ((i, 22), Done)
+  go (0, offs) _ = ((0, offs - 2), Done)
+  go (old, offs@0) i = ((i, 22), toChopped $ old .&. 0b11)
+  go (old, offs) _ = ((old `shiftR` 2, offs - 2), toChopped $ old .&. 0b11)
   toChopped 0 = OO
   toChopped 1 = OI
   toChopped 2 = IO
