@@ -64,11 +64,19 @@ chop' = mealy' serialClock go start where
 inverse :: Signal' SerialClock Chopped -> Signal' SerialClock (Unsigned 24)
 inverse = mealy' serialClock go start where
   start = (0, 0, 11)
-  go (acc, _, 0) Done = ((0, acc, 11), acc)
-  go (acc, _, 0) chop = ((0, new, 11), new) where new = (acc `shiftL` 2) .|. fromChopped chop
-  go (acc, old, n) Done = ((acc, old, n - 1), old)
-  go (acc, old, n) chop = (((acc `shiftL` 2) .|. fromChopped chop, old, n - 1), old)
+  go (acc, _, 0) Done = ((0, acc, 11), rearrange acc)
+  go (acc, _, 0) chop = ((0, new, 11), rearrange new) where new = (acc `shiftL` 2) .|. fromChopped chop
+  go (acc, old, n) Done = ((acc, old, n - 1), rearrange old)
+  go (acc, old, n) chop = (((acc `shiftL` 2) .|. fromChopped chop, old, n - 1), rearrange old)
   fromChopped OO = 0
   fromChopped OI = 1
   fromChopped IO = 2
   fromChopped II = 3
+
+
+rearrange :: Unsigned 24 -> Unsigned 24
+--rearrange = unpack . shuffle . pack where
+rearrange = shuffle where
+   shuffle a = (setSlice d23 d22 s0 . setSlice d1 d0 s11) a where
+     s0 = slice d1 d0 a
+     s11 = slice d23 d22 a
