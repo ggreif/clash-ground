@@ -75,8 +75,27 @@ inverse = mealy' serialClock go start where
 
 
 rearrange :: Unsigned 24 -> Unsigned 24
---rearrange = unpack . shuffle . pack where
-rearrange = shuffle where
-   shuffle a = (setSlice d23 d22 s0 . setSlice d1 d0 s11) a where
+rearrange a = ( setSlice d23 d22 s0
+              . setSlice d21 d20 s1
+              . setSlice d19 d18 s2
+              . setSlice d17 d16 s3
+              . setSlice d15 d14 s4
+              . setSlice d13 d12 s5
+              . setSlice d11 d10 s6
+              . setSlice d9 d8 s7
+              . setSlice d7 d6 s8
+              . setSlice d5 d4 s9
+              . setSlice d3 d2 s10
+              . setSlice d1 d0 s11 ) a where
      s0 = slice d1 d0 a
+     s1 = slice d3 d2 a
+     s2 = slice d5 d4 a
+     s3 = slice d7 d6 a
+     s4 = slice d9 d8 a
+     s5 = slice d11 d10 a
+     s6 = slice d13 d12 a
+     s7 = slice d15 d14 a
+     s8 = slice d17 d16 a
+     s9 = slice d19 d18 a
+     s10 = slice d21 d20 a
      s11 = slice d23 d22 a
