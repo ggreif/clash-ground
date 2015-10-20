@@ -8,14 +8,17 @@ import Data.Proxy
 
 type BitWidth = 5
 
-load :: SNat n -> SNat tags -> Signal (Unsigned BitWidth) -> Signal (Unsigned BitWidth)
-load _ tags addr = blockRamPow2 init masked masked read (signal 0) where
+loadMeta :: SNat n -> SNat tags -> Signal (Unsigned BitWidth) -> Signal (Unsigned BitWidth)
+loadMeta n tags addr = blockRamPow2 init shifted shifted read (signal 0) where
     init = 0 :> 1 :> 2 :> 3 :> 4 :> 5 :> 6 :> 7 :> 8 :> 9 :> 10 :> 11 :> 12 :> 13 :> 14 :> 15 :>
            0 :> 1 :> 2 :> 3 :> 4 :> 5 :> 6 :> 7 :> 8 :> 9 :> 10 :> 11 :> 12 :> 13 :> 14 :> 15 :> Nil
     read = signal False
     masked = (.&. complement (shiftL 1 (fromEnum tags) - 1)) <$> addr
+    shifted = flip shiftR (fromEnum n) <$> masked
 
-topEntity = load d3 d2
+topEntity = loadMeta d3 d2
+
+testInput = fromList [0 .. 30]
 
 instance Eq (SNat n) where
   _ == _ = True
