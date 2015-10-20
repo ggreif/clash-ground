@@ -12,10 +12,14 @@ load :: SNat n -> SNat tags -> Signal (Unsigned BitWidth) -> Signal (Unsigned Bi
 load n tags addr = (,) <$> orig <*> meta where
     init = 0 :> 1 :> 2 :> 3 :> 4 :> 5 :> 6 :> 7 :> 8 :> 9 :> 10 :> 11 :> 12 :> 13 :> 14 :> 15 :>
            0 :> 1 :> 2 :> 3 :> 4 :> 5 :> 6 :> 7 :> 8 :> 9 :> 10 :> 11 :> 12 :> 13 :> 14 :> 15 :> Nil
+    initMeta :: Vec (2 ^ (BitWidth - 3{-n-})) (Unsigned BitWidth)
+    initMeta = 0 :> 1 :> 2 :> 3 :> Nil
     read = signal False
     masked = (.&. complement (shiftL 1 (fromEnum tags) - 1)) <$> addr
-    shifted = flip shiftR (fromEnum n) <$> masked
-    meta = blockRamPow2 init shifted shifted read (signal 0) -- too big blockRam
+    shifted = flip shiftR (fromEnum n) <$> addr
+    --meta :: Signal (Unsigned BitWidth)
+    meta = blockRam initMeta shifted shifted read (signal 0)
+    --orig :: Signal (Unsigned BitWidth)
     orig = blockRamPow2 init masked masked read (signal 0)
 
 topEntity = load d3 d2
