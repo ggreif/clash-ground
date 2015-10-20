@@ -19,7 +19,7 @@ loadMeta n tags addr = blockRamPow2 init shifted shifted read (signal 0) where
 topEntity = loadMeta d3 d2
 
 testInput :: Signal (Unsigned BitWidth)
-testInput = stimuliGenerator $ 0 :> 1 :> 2 :> 3 :> 4 :> 5 :> 6 :> 7 :> 8 :> 9 :> 10 :> 11 :> 12 :> 13 :> 14 :> 15 :> Nil
+testInput = stimuliGenerator $ 0 :> 1 :> 2 :> 3 :> 4 :> 5 :> 6 :> 7 :> 8 :> 9 :> 10 :> 11 :> 12 :> 13 :> 14 :> 15 :> 16 :> 17 :> 18 :> 19 :> 20 :> 21 :> 22 :> 23 :> 24 :> 25 :> 26 :> 27 :> 28 :> 29 :> 30 :> 31 :> 32 :> 33 :> 34 :> Nil
 
 instance Eq (SNat n) where
   _ == _ = True
