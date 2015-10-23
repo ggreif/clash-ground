@@ -33,10 +33,10 @@ type DB = 2^DBBits
 type DBI = Unsigned DB
 
 data Instr = LOAD W  -- absolute
-           | WRITE W -- upmost row
-           | BRANCH DBI
-           | LEFT DBI
+           | STORE W -- upmost row
+           | LEFT DBI -- follow
            | RIGHT DBI
+           | BRANCH DBI
            | NOP
            | STOP
            | RE
@@ -50,6 +50,9 @@ dbi = (!!)
 
 redox :: DeBruijn (W, W, W) -> Instr -> (DeBruijn (W, W, W), Maybe W)
 redox ((_, b, c):>(m:<l)) (LOAD addr) = (l:>(addr, b, c):>m, Nothing)
+  --where blockRamPow2 (repeat 0)
+
+
 redox (h:>(m:<l)) NOP = (l:>h:>m, Nothing)
 redox ((a,b,c):>m) (AD (dbi m -> (d,e,f))) = ((a+d,b+e,c+f):>m, Nothing)
   --where (d,e,f) = m !! dbi
