@@ -10,18 +10,18 @@ data Exp = Lit Int | Add Exp Exp deriving Show
 
 type Eval exp = forall k . CONT k -> exp -> k
 
-eval'' :: Eval Exp
-eval'' c (\case Lit (exec c -> n') -> n'
-                Add (eval'' (C1 c) -> a') (a' -> b') -> b'
-          -> res') = res'
+eval :: Eval Exp
+eval c (\case Lit (exec c -> n') -> n'
+              Add (eval (NEXT c) -> a') (a' -> b') -> b'
+        -> res') = res'
 
 
 data CONT k where
-  C0 :: CONT k -> Int -> CONT k   -- ADD
-  C1 :: CONT k -> CONT (Exp -> k) -- NEXT
-  C2 :: CONT Int                  -- HALT
+  ADD :: CONT k -> Int -> CONT k
+  NEXT :: CONT k -> CONT (Exp -> k)
+  HALT :: CONT Int
 
 exec :: CONT k -> Int -> k
-exec (C0 c a) (exec c . (a+) -> res) = res
-exec (C1 c) (eval'' . (C0 c) -> res) = res
-exec C2 a = a
+exec (ADD c a) (exec c . (a+) -> res) = res
+exec (NEXT c) (eval . (ADD c) -> res) = res
+exec HALT a = a
