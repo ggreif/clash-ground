@@ -41,12 +41,14 @@ data Instr = LOAD W
 
 type DeBruijn = Vec DB
 
-redox :: DeBruijn (W, W, W) -> Instr -> (DeBruijn (W, W, W), Bool)
-redox ((a, b, c):>(m:<l)) (LOAD addr) = (l:>(addr, b, c):>m, False)
-redox v STOP = (v, True)
+redox :: DeBruijn (W, W, W) -> Instr -> (DeBruijn (W, W, W), Maybe W)
+redox ((a, b, c):>(m:<l)) (LOAD addr) = (l:>(addr, b, c):>m, Nothing)
+redox (h:>(m:<l)) NOP = (l:>h:>m, Nothing)
+redox v STOP = (v, theLook v)
+  where theLook ((a, _, _):>_) = Just a
 
 topEntity = mealy redox (repeat (0,0,0))
 
-testInput = stimuliGenerator $ LOAD 11 :> LOAD 3 :> STOP :> Nil
+testInput = stimuliGenerator $ LOAD 11 :> LOAD 3 :> NOP :> NOP :> NOP :> NOP :> NOP :> NOP :> NOP :> NOP :> NOP :> NOP :> NOP :> NOP :> NOP :> NOP :> STOP :> Nil
 
 t = sampleN 30 $ topEntity testInput
