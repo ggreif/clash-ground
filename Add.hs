@@ -1,4 +1,4 @@
-{-# LANGUAGE ViewPatterns, LambdaCase, RankNTypes, GADTs #-}
+{-# LANGUAGE ViewPatterns, LambdaCase, RankNTypes, GADTs, PatternSynonyms #-}
 
 module Add where
 
@@ -28,7 +28,9 @@ exec HALT a = a
 
 
 type W = Unsigned 10
-type DBI = Unsigned 16
+type DBBits = 4
+type DB = 2^DBBits
+type DBI = Unsigned DB
 
 data Instr = LOAD W
            | WRITE W -- upmost row
@@ -37,13 +39,13 @@ data Instr = LOAD W
            | STOP
 
 
-type InstrS = Signal Instr
+type DeBruijn = Vec DB
 
-redox :: Vec 3 W -> Instr -> (Vec 3 W, Bool)
-redox (a:>b:>c:>Nil) (LOAD addr) = (b:>c:>addr:>Nil, False)
+redox :: DeBruijn (W, W, W) -> Instr -> (DeBruijn (W, W, W), Bool)
+redox ((a, b, c):>(m:<l)) (LOAD addr) = (l:>(addr, b, c):>m, False)
 redox v STOP = (v, True)
 
-topEntity = mealy redox (repeat 0)
+topEntity = mealy redox (repeat (0,0,0))
 
 testInput = stimuliGenerator $ LOAD 11 :> LOAD 3 :> STOP :> Nil
 
