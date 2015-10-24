@@ -90,18 +90,20 @@ class Machine a where
 
 class Machine a => Args t a where
   nth :: t -> Int -> a
-  pck :: (t -> a) -> [a] -> t
+  pck :: [a] -> t
 
 instance {-# INCOHERENT #-} Machine a => Args a a where
   nth a 0 = a
-  pck _ (a:_) = a
+  pck (a:_) = a
 
 instance Machine a => Args () a where
   nth = error "() has no args"
+  pck _ = ()
 
 instance Machine a => Args (a, a) a where
   nth (b, _) 0 = b
   nth (_, c) 1 = c
+  pck (b:c:_) = (b, c)
 
 
 data Cases :: Na -> * -> * where
@@ -119,7 +121,7 @@ data Binding where
 
 instance Show Binding where
   show B = "B"
-  show (BConv f) = "CONV(B)->" L.++ show (f $ pck f [B])
+  show (BConv f) = "CONV(B)->" L.++ show (f $ pck [B])
 
 instance Machine Binding where
   convention = BConv
