@@ -1,4 +1,4 @@
-{-# LANGUAGE ViewPatterns, LambdaCase, RankNTypes, GADTs, PatternSynonyms, KindSignatures #-}
+{-# LANGUAGE ViewPatterns, LambdaCase, RankNTypes, GADTs, PatternSynonyms, KindSignatures, MultiParamTypeClasses, FlexibleInstances #-}
 
 module Add where
 
@@ -75,18 +75,36 @@ pls (S n) = pls n . S
 
 -- We need something like this
 
-pls' = convention (\arg -> untag((\() -> id) :! (\n -> pls' n . S) :! Empy))
+pls', s', id' :: Machine a => a
+pls' = convention (\arg -> untag arg ((\() -> id') :! (\n -> call pls' n {- . s' -}) :! Empy))
 s' = convention(\arg -> tag arg)
+id' = convention(\arg -> arg)
 
 class Machine a where
-  convention :: (a -> a) -> a
+  --convention :: (a -> a) -> a
+  convention :: Args t a => (t -> a) -> a
   tag :: a -> a
-  untag :: (Cases n a -> a) -> a
+  --untag :: (Cases n a -> a) -> a
+  untag :: a -> Cases n a -> a
+  call :: a -> a -> a
+
+class Machine a => Args t a where
+  nth :: t -> Int -> a
+
+instance {-# INCOHERENT #-} Machine a => Args a a where
+  nth a 0 = a
+
+instance Machine a => Args () a where
+  nth = error "() has no args"
+
+instance Machine a => Args (a, a) a where
+  nth (b, _) 0 = b
+  nth (_, c) 1 = c
 
 
 data Cases :: Na -> * -> * where
   Empy :: Cases Z a
-  Case :: (a -> a) -> Cases n a -> Cases (S n) a
+  Case :: Args t a => (t -> a) -> Cases n a -> Cases (S n) a
 
 pattern f :! cs = Case f cs
 infixr 4 :!
