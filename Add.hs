@@ -6,6 +6,7 @@ module Add where
 
 import CLaSH.Prelude
 import qualified Data.List as L
+import Data.Maybe
 
 data Exp = Lit Int | Add Exp Exp deriving Show
 
@@ -81,6 +82,9 @@ pls' = convention (\arg -> untag arg ((\() -> id') :! (\n -> call pls' n {- . s'
 s' = convention(\arg -> same arg (tag 1 arg))
  where same :: a -> a -> a
        same _ = id
+diag' = convention(\arg -> p arg (tag 0 (arg,arg)))
+ where p :: a -> a -> a
+       p _ = id
 id' = convention(\arg -> arg)
 
 class Machine a where
@@ -91,20 +95,22 @@ class Machine a where
   call :: a -> a -> a
 
 class Machine a => Args t a where
-  nth :: t -> Int -> a
+  nth :: t -> Int -> Maybe a
   pck :: [a] -> t
 
 instance {-# INCOHERENT #-} Machine a => Args a a where
-  nth a 0 = a
+  nth a 0 = Just a
+  nth _ _ = Nothing
   pck (a:_) = a
 
 instance Machine a => Args () a where
-  nth = error "() has no args"
+  nth _ _ = Nothing
   pck _ = ()
 
 instance Machine a => Args (a, a) a where
-  nth (b, _) 0 = b
-  nth (_, c) 1 = c
+  nth (b, _) 0 = Just b
+  nth (_, c) 1 = Just c
+  nth _ _ = Nothing
   pck (b:c:_) = (b, c)
 
 
@@ -124,7 +130,7 @@ data Binding where
 instance Show Binding where
   show B = "B"
   show (BConv f) = "CONV(B)->" L.++ show (f $ pck $ L.repeat B)
-  show (BTag i t) = "TAG(" L.++ show i L.++ ":xxx)"
+  show (BTag i t) = "TAG(" L.++ show i L.++ ":" L.++ L.intersperse ' ' (L.concat $ L.map ((show :: Binding -> String) . fromJust) $ takeWhile (not . null) $ L.map (t `nth`) [0 ..]) L.++ ")"
 
 instance Machine Binding where
   convention = BConv
