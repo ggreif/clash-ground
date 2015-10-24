@@ -5,6 +5,7 @@ module Add where
 -- implement the virtual machine derived in mosaic/HuttonBahr.hs
 
 import CLaSH.Prelude
+import qualified Data.List as L
 
 data Exp = Lit Int | Add Exp Exp deriving Show
 
@@ -81,18 +82,19 @@ s' = convention(\arg -> tag arg)
 id' = convention(\arg -> arg)
 
 class Machine a where
-  --convention :: (a -> a) -> a
+  -- calling convention
   convention :: Args t a => (t -> a) -> a
   tag :: a -> a
-  --untag :: (Cases n a -> a) -> a
   untag :: a -> Cases n a -> a
   call :: a -> a -> a
 
 class Machine a => Args t a where
   nth :: t -> Int -> a
+  pck :: (t -> a) -> [a] -> t
 
 instance {-# INCOHERENT #-} Machine a => Args a a where
   nth a 0 = a
+  pck _ (a:_) = a
 
 instance Machine a => Args () a where
   nth = error "() has no args"
@@ -108,3 +110,17 @@ data Cases :: Na -> * -> * where
 
 pattern f :! cs = Case f cs
 infixr 4 :!
+
+
+data Binding where
+  --B :: Args t Binding => t -> Binding
+  B :: Binding
+  BConv :: Args t Binding => (t -> Binding) -> Binding
+
+instance Show Binding where
+  show B = "B"
+  show (BConv f) = "CONV(B)->" L.++ show (f $ pck f [B])
+
+instance Machine Binding where
+  convention = BConv
+  --tag 
