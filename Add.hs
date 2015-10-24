@@ -78,13 +78,15 @@ pls (S n) = pls n . S
 
 pls', s', id' :: Machine a => a
 pls' = convention (\arg -> untag arg ((\() -> id') :! (\n -> call pls' n {- . s' -}) :! Empy))
-s' = convention(\arg -> tag arg)
+s' = convention(\arg -> same arg (tag 1 arg))
+ where same :: a -> a -> a
+       same _ = id
 id' = convention(\arg -> arg)
 
 class Machine a where
   -- calling convention
   convention :: Args t a => (t -> a) -> a
-  tag :: a -> a
+  tag :: Args t a => Int -> t -> a
   untag :: a -> Cases n a -> a
   call :: a -> a -> a
 
@@ -115,14 +117,15 @@ infixr 4 :!
 
 
 data Binding where
-  --B :: Args t Binding => t -> Binding
   B :: Binding
   BConv :: Args t Binding => (t -> Binding) -> Binding
+  BTag :: Args t Binding => Int -> t -> Binding
 
 instance Show Binding where
   show B = "B"
-  show (BConv f) = "CONV(B)->" L.++ show (f $ pck [B])
+  show (BConv f) = "CONV(B)->" L.++ show (f $ pck $ L.repeat B)
+  show (BTag i t) = "TAG(" L.++ show i L.++ ":xxx)"
 
 instance Machine Binding where
   convention = BConv
-  --tag 
+  tag = BTag
