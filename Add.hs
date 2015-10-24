@@ -1,4 +1,4 @@
-{-# LANGUAGE ViewPatterns, LambdaCase, RankNTypes, GADTs, PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns, LambdaCase, RankNTypes, GADTs, PatternSynonyms, KindSignatures #-}
 
 module Add where
 
@@ -65,3 +65,28 @@ topEntity = mealy redox (repeat (0,0,0))
 testInput = stimuliGenerator $ LOAD 11 :> LOAD 3 :> RE :> AD 0 :> STOP :> Nil
 
 t = sampleN 30 $ topEntity testInput
+
+
+-- ## WARM UP
+data Na = Z | S Na deriving Show
+
+pls Z = id
+pls (S n) = pls n . S
+
+-- We need something like this
+
+pls' = convention (\arg -> untag((\() -> id) :! (\n -> pls' n . S) :! Empy))
+s' = convention(\arg -> tag arg)
+
+class Machine a where
+  convention :: (a -> a) -> a
+  tag :: a -> a
+  untag :: (Cases n a -> a) -> a
+
+
+data Cases :: Na -> * -> * where
+  Empy :: Cases Z a
+  Case :: (a -> a) -> Cases n a -> Cases (S n) a
+
+pattern f :! cs = Case f cs
+infixr 4 :!
