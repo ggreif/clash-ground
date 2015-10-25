@@ -118,20 +118,31 @@ data Cases :: Na -> * -> * where
   Empy :: Cases Z a
   Case :: Args t a => (t -> a) -> Cases n a -> Cases (S n) a
 
+instance Show (Cases n Binding) where
+  show Empy = ""
+  show (Case f more) = show (BConv f) L.++ " :! " L.++ show more
+
 pattern f :! cs = Case f cs
 infixr 4 :!
+infixr 4 `Case`
 
 
 data Binding where
   B :: Binding
   BConv :: Args t Binding => (t -> Binding) -> Binding
   BTag :: Args t Binding => Int -> t -> Binding
+  BCall :: Binding -> Binding -> Binding
+  BUntag :: Binding -> Cases n Binding -> Binding
 
 instance Show Binding where
   show B = "B"
   show (BConv f) = "CONV(B)->" L.++ show (f $ pck $ L.repeat B)
   show (BTag i t) = "TAG(" L.++ show i L.++ ":" L.++ L.intersperse ' ' (L.concat $ L.map ((show :: Binding -> String) . fromJust) $ takeWhile (not . null) $ L.map (t `nth`) [0 ..]) L.++ ")"
+  show (BCall f a) = "call " L.++ show f L.++ "(" L.++ show a L.++ ")"
+  show (BUntag b cs) = "untag " L.++ show b L.++ " as (" L.++ show cs L.++ ")"
 
 instance Machine Binding where
   convention = BConv
   tag = BTag
+  call = BCall
+  untag = BUntag
