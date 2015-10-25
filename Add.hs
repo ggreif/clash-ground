@@ -143,6 +143,21 @@ instance Show Binding where
 
 instance Machine Binding where
   convention = BConv
+  
   tag = BTag
   call = BCall
   untag = BUntag
+
+-- Serialize such a beast to a Vec
+
+-- remember: lazy mantra is... LET is allocation, CASE is evaluation
+-- TODO: we need a system to break cycles
+
+--newtype Heap = HP (Unsigned 10 -> Vec (2^10) (W, W, W) -> (Vec (2^10) (W, W, W), Unsigned 10))
+newtype Heap = HP ([(W, W, W)]) deriving Show
+
+instance Machine Heap where
+  -- function entry point
+  convention f = HP $ (1, 3 {-this should be (compile f) as code-}, 0) : compile f
+    where compile f = []
+  
