@@ -30,9 +30,13 @@ test = L.takeWhile not . L.drop 1 . sample $ expectedOutput (topEntity testInput
 
 prop_histo :: [Unsigned 10] -> Bool
 prop_histo [] = True
-prop_histo as = sample' (histo $ fromList as) == L.reverse (snd (histo' as))
-  where sample' :: Signal (Unsigned 12) -> [Unsigned 12]
-        sample' = sampleN (L.length as)
+prop_histo [_] = True
+prop_histo as = sample' as (histo $ fromList as) == butLast (L.reverse (snd (histo' as)))
+  where
+
+sample' :: [Unsigned 10] -> Signal (Unsigned 12) -> [Unsigned 12]
+sample' as = L.tail . sampleN (L.length as)
+butLast xs = L.take (L.length xs) xs
 
 histo' = L.foldl inc ([], [])
   where inc (occs, res) num = case L.lookup num occs of
