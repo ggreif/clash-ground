@@ -31,12 +31,10 @@ test = L.takeWhile not . L.drop 1 . sample $ expectedOutput (topEntity testInput
 prop_histo :: [Unsigned 10] -> Q.Property
 prop_histo [] = True Q.=== True
 prop_histo [_] = True Q.=== True
-prop_histo as = sample' as (histo $ fromList as) Q.=== butLast (histo' as)
-  where
-
-sample' :: [Unsigned 10] -> Signal (Unsigned 12) -> [Unsigned 12]
-sample' as = L.tail . sampleN (L.length as)
-butLast xs = L.take (L.length xs - 1) xs
+prop_histo as = sample' (histo $ fromList as) Q.=== butLast (histo' as)
+  where sample' :: Signal (Unsigned 12) -> [Unsigned 12]
+        sample' = L.tail . sampleN (L.length as)
+        butLast xs = L.take (L.length xs - 1) xs
 
 histo' :: [Unsigned 10] -> [Unsigned 12]
 histo' = L.drop 1 . fmap (snd . L.head) . L.scanl inc []
