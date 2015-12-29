@@ -5,7 +5,7 @@ histo :: (KnownNat n, KnownNat (2 ^ n), KnownNat b) => Signal (Unsigned n) -> Si
 histo nums = read
   where init = repeat 0
         wrEnable = False `register` signal True
-        read = readNew blockRamPow2 init wrAddr nums wrEnable write
+        read = readNew (blockRamPow2 init) wrAddr nums wrEnable write
         write = read + 1
         wrAddr = 0 `register` nums
 
@@ -28,8 +28,8 @@ expectedOutput = outputVerifier $
 
 test = L.takeWhile not . L.drop 1 . sample $ expectedOutput (topEntity testInput)
 
-readNew :: (Vec m a -> Signal (Unsigned n) -> Signal (Unsigned n) -> Signal Bool -> Signal a -> Signal a) -> Vec m a -> Signal (Unsigned n) -> Signal (Unsigned n) -> Signal Bool -> Signal a -> Signal a
-readNew ram ini wrAd rdAd wrEn wrData = mux wasSame wasWritten $ ram ini wrAd rdAd wrEn wrData
+readNew :: (Signal (Unsigned n) -> Signal (Unsigned n) -> Signal Bool -> Signal a -> Signal a) -> Signal (Unsigned n) -> Signal (Unsigned n) -> Signal Bool -> Signal a -> Signal a
+readNew ram wrAd rdAd wrEn wrData = mux wasSame wasWritten $ ram wrAd rdAd wrEn wrData
   where sameAd = liftA2 (==) wrAd rdAd
         wasSame = False `register` (liftA2 (&&) wrEn sameAd)
         wasWritten = undefined `register` wrData
