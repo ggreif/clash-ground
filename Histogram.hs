@@ -29,7 +29,7 @@ expectedOutput = outputVerifier $
 test = L.takeWhile not . L.drop 1 . sample $ expectedOutput (topEntity testInput)
 
 readNew :: (Signal (Unsigned n) -> Signal (Unsigned n) -> Signal Bool -> Signal a -> Signal a) -> Signal (Unsigned n) -> Signal (Unsigned n) -> Signal Bool -> Signal a -> Signal a
-readNew ram wrAd rdAd wrEn wrData = mux wasSame wasWritten $ ram wrAd rdAd wrEn wrData
-  where sameAd = liftA2 (==) wrAd rdAd
-        wasSame = False `register` (liftA2 (&&) wrEn sameAd)
+readNew ram wrAddr rdAddr wrEn wrData = mux wasSame wasWritten $ ram wrAddr rdAddr wrEn wrData
+  where sameAddr = liftA2 (==) wrAddr rdAddr
+        wasSame = False `register` (liftA2 (&&) wrEn sameAddr)
         wasWritten = undefined `register` wrData
