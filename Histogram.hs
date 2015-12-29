@@ -1,6 +1,7 @@
 import CLaSH.Prelude
 import qualified Data.List as L
 import qualified Test.QuickCheck as Q
+import Test.QuickCheck (quickCheck, (===))
 
 histo :: (KnownNat n, KnownNat (2 ^ n), KnownNat b) => Signal (Unsigned n) -> Signal (Unsigned b)
 histo nums = read
@@ -36,9 +37,9 @@ expectedOutput = outputVerifier $
 test = L.takeWhile not . L.drop 1 . sample $ expectedOutput (topEntity testInput)
 
 prop_histo :: [Unsigned 10] -> Q.Property
-prop_histo [] = True Q.=== True
-prop_histo [_] = True Q.=== True
-prop_histo as = sample' (histo $ fromList as) Q.=== butLast (histo' as)
+prop_histo [] = True === True
+prop_histo [_] = True === True
+prop_histo as = sample' (histo $ fromList as) === butLast (histo' as)
   where sample' :: Signal (Unsigned 12) -> [Unsigned 12]
         sample' = L.tail . sampleN (L.length as)
         butLast xs = L.take (L.length xs - 1) xs
