@@ -1,7 +1,7 @@
 module Recog where
 
 import CLaSH.Prelude
-import Debug.Trace
+--import Debug.Trace
 
 recog :: (KnownNat (d + 1 + m), KnownNat m) => SNat (d + 1) -> BitVector m -> Signal (BitVector (d + 1 + m)) -> Signal (Maybe (Unsigned 6))
 recog d pat s = fold (liftA2 find) (zipWith match poss shifts)
@@ -9,7 +9,7 @@ recog d pat s = fold (liftA2 find) (zipWith match poss shifts)
         find a _ = a
         shifts = iterate d (`shiftR` 1) s
         poss = iterate d (+1) 0
-        match pos shifted = (\sig -> if traceShow (sig, pat, pos) truncateB sig == pat then Just pos else Nothing) <$> shifted
+        match pos shifted = (\sig -> if {-traceShow (sig, pat, pos)-} truncateB sig == pat then Just pos else Nothing) <$> shifted
 
 
 -- #### TEST BENCH ####
