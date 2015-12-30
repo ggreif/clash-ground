@@ -1,3 +1,5 @@
+module Histogram where
+
 import CLaSH.Prelude
 import qualified Data.List as L
 import qualified Test.QuickCheck as Q
