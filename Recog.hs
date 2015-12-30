@@ -5,11 +5,11 @@ import Debug.Trace
 
 recog :: (KnownNat (d + 1 + m), KnownNat m) => SNat (d + 1) -> BitVector m -> Signal (BitVector (d + 1 + m)) -> Signal (Maybe (Unsigned 6))
 recog d pat s = fold (liftA2 find) (zipWith match poss shifts)
-  where find a@Just{} _ = a
-        find _ b = b
+  where find _ b@Just{} = b
+        find a _ = a
         shifts = iterate d (`shiftR` 1) s
         poss = iterate d (+1) 0
-        match pos shifted = (\sig -> if traceShow (sig, pat) truncateB sig == pat then Just pos else Nothing) <$> shifted
+        match pos shifted = (\sig -> if traceShow (sig, pat, pos) truncateB sig == pat then Just pos else Nothing) <$> shifted
 
 
 -- #### TEST BENCH ####
@@ -19,9 +19,10 @@ topEntity = recog d5 0b101 -- check 3 bits
 
 
 testInput :: Signal (BitVector 8)
-testInput = pure 0b1011010
+testInput = 0 `register` (0b101 `register` (0b10100000 `register` pure 0b1011010))
+--infixr `register`
 
 expectedOutput :: Signal (Maybe (Unsigned 6)) -> Signal Bool
-expectedOutput = outputVerifier $ Just 0 :> Just 0 :> Nil
+expectedOutput = outputVerifier $ Nothing :> Just 0 :> Just 5 :> Just 4 :> Nil
 
 test = takeWhile not . sample $ expectedOutput (topEntity testInput)
