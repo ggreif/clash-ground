@@ -11,10 +11,10 @@ histo nums = read
         write = read + 1
         wrAddr = 0 `register` nums
 
-readNew :: (Signal (Unsigned n) -> Signal (Unsigned n) -> Signal Bool -> Signal a -> Signal a) -> Signal (Unsigned n) -> Signal (Unsigned n) -> Signal Bool -> Signal a -> Signal a
+readNew :: Eq addr => (Signal addr -> Signal addr -> Signal Bool -> Signal a -> Signal a) -> Signal addr -> Signal addr -> Signal Bool -> Signal a -> Signal a
 readNew ram wrAddr rdAddr wrEn wrData = mux wasSame wasWritten $ ram wrAddr rdAddr wrEn wrData
-  where sameAddr = liftA2 (==) wrAddr rdAddr
-        wasSame = False `register` (liftA2 (&&) wrEn sameAddr)
+  where sameAddr = (==) <$> wrAddr <*> rdAddr
+        wasSame = False `register` ((&&) <$> wrEn <*> sameAddr)
         wasWritten = undefined `register` wrData
 
 -- #### TEST BENCH ####
