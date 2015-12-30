@@ -12,7 +12,7 @@ recog d pat s = fold find (zipWith match poss comps)
         --poss = indices d --iterate d (+1) 0
         poss :: Vec _ (Unsigned 6)
         poss = iterate d (+1) 0
-        --match :: Unsigned 6 -> Signal (BitVector n) -> Signal (Maybe (Unsigned 6))
+        match :: Unsigned 6 -> Signal (BitVector _) -> Signal (Maybe (Unsigned 6))
         match pos sig = (\sig -> if truncateB sig == pat then Just pos else Nothing) <$> sig
 
 
@@ -22,7 +22,7 @@ topEntity :: Signal (BitVector 8) -> Signal (Maybe (Unsigned 6))
 topEntity = recog d3 0b101
 
 
---testInput :: Signal (Unsigned 7)
+testInput :: Signal (BitVector 8)
 testInput = pure 0b101
 
 expectedOutput :: Signal (Maybe (Unsigned 6)) -> Signal Bool
