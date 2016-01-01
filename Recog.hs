@@ -7,8 +7,8 @@ recog :: (KnownNat (d + 1 + m), KnownNat m) => SNat (d + 1) -> BitVector m -> Si
 recog d pat s = fold (liftA2 find) (zipWith match poss shifts)
   where find _ b@Just{} = b
         find a _ = a
-        shifts = iterate d (`shiftR` 1) s
-        poss = iterate d (+1) 0
+        shifts = s :> generate d (`shiftR` 1) s
+        poss = 0 :> generate d (+1) 0
         match pos shifted = (\sig -> if {-traceShow (sig, pat, pos)-} truncateB sig == pat then Just pos else Nothing) <$> shifted
 
 
