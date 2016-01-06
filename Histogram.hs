@@ -26,8 +26,8 @@ condWrite :: (Signal (Maybe (addr, dt)) -> Signal addr -> Signal dt)
           -> (dt -> Maybe dt) -> Signal addr -> Signal dt
 condWrite ram trans rd = result
   where result = ram wr rd
-        rd' = undefined `register` rd
-        wr = fmap fmap ((,) <$> rd') <*> (trans <$> result)
+        rd' = const Nothing `register` fmap fmap ((,) <$> rd)
+        wr = rd' <*> (trans <$> result)
 
 -- rewrite histo in terms of condWrite
 
