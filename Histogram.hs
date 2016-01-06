@@ -39,13 +39,13 @@ condWrite2 ram trans rd = result
 -- blockRam-backed Moore machine?
 --
 condUpdater :: (Signal (dt -> Maybe dt) -> Signal addr -> Signal dt)
-            -> (dt -> o) -> Signal (o -> Maybe (dt -> dt)) -> Signal addr -> Signal o
-condUpdater ram out upd rd = result
+            -> (i -> addr) -> (dt -> o) -> Signal (o -> Maybe (dt -> dt)) -> Signal i -> Signal o
+condUpdater ram hash out upd inp = result
   where result = out <$> dt
+        rd = hash <$> inp
         dt = ram wr rd
         wr = fmap match upd <*> result
-        match f o dt = case f o of Just f' -> Just (f' dt); Nothing -> Nothing
-        
+        match f o dt = ($ dt) <$> f o        
 
 -- rewrite histo in terms of condWrite
 
