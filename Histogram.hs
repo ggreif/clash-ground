@@ -29,6 +29,24 @@ condWrite ram trans rd = result
         rd' = const Nothing `register` fmap fmap ((,) <$> rd)
         wr = rd' <*> (trans <$> result)
 
+condWrite2 :: (Signal (Maybe (addr, dt)) -> Signal addr -> Signal dt)
+          -> Signal (dt -> Maybe dt) -> Signal addr -> Signal dt
+condWrite2 ram trans rd = result
+  where result = ram wr rd
+        rd' = const Nothing `register` fmap fmap ((,) <$> rd)
+        wr = rd' <*> (trans <*> result)
+
+-- blockRam-backed Moore machine?
+--
+condUpdater :: (Signal (dt -> Maybe dt) -> Signal addr -> Signal dt)
+            -> (dt -> o) -> Signal (o -> Maybe (dt -> dt)) -> Signal addr -> Signal o
+condUpdater ram out upd rd = result
+  where result = out <$> dt
+        dt = ram wr rd
+        wr = fmap match upd <*> result
+        match f o dt = case f o of Just f' -> Just (f' dt); Nothing -> Nothing
+        
+
 -- rewrite histo in terms of condWrite
 
 histoCond :: (KnownNat n, KnownNat (2 ^ n), KnownNat b) => Signal (Unsigned n) -> Signal (Unsigned b)
