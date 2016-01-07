@@ -28,12 +28,6 @@ maybeWrite ram wr rd = ram wrAddr rd wrEn wrData
 
 condWrite :: (Signal (Maybe (addr, dt)) -> Signal addr -> Signal dt)
           -> (dt -> Maybe dt) -> Signal addr -> Signal dt
-{-
-condWrite ram trans rd = result
-  where result = ram wr rd
-        rd' = const Nothing `register` fmap fmap ((,) <$> rd)
-        wr = rd' <*> (trans <$> result)
--}
 condWrite ram trans = condSigWrite ram (pure trans)
 
 condSigWrite :: (Signal (Maybe (addr, dt)) -> Signal addr -> Signal dt)
@@ -42,6 +36,14 @@ condSigWrite ram trans rd = result
   where result = ram wr rd
         rd' = const Nothing `register` fmap fmap ((,) <$> rd)
         wr = rd' <*> (trans <*> result)
+
+uncondWrite :: (Signal (Maybe (addr, dt)) -> Signal addr -> Signal dt)
+          -> (dt -> dt) -> Signal addr -> Signal dt
+uncondWrite ram trans = condWrite ram (Just . trans)
+
+uncondSigWrite :: (Signal (Maybe (addr, dt)) -> Signal addr -> Signal dt)
+          -> Signal (dt -> dt) -> Signal addr -> Signal dt
+uncondSigWrite ram trans = condSigWrite ram ((Just .) <$> trans)
 
 -- blockRam-backed Moore machine?
 --
@@ -57,7 +59,7 @@ condUpdater ram hash out upd inp = result
 -- rewrite histo in terms of condWrite
 
 histo :: (KnownNat n, KnownNat (2 ^ n), KnownNat b) => Signal (Unsigned n) -> Signal (Unsigned b)
-histo = condWrite (maybeWrite $ readNew (blockRamPow2 (repeat 0))) (Just . (+1))
+histo = uncondWrite (maybeWrite $ readNew (blockRamPow2 (repeat 0))) (+1)
 
 --temporarily:
 
