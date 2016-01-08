@@ -30,8 +30,8 @@ condWrite' :: (dt ~ Unsigned b, KnownNat b) => (Signal (Maybe (addr, dt)) -> Sig
           -> Uncond b dt -> Signal addr -> Signal dt
 condWrite' ram trans rd = result
   where result = ram wr rd
-        rd' = const Nothing `register` fmap fmap ((,) <$> rd)
-        wr = rd' <*> (refunc trans <$> result)
+        --rd' = const Nothing `register` fmap fmap ((,) <$> rd)
+        wr = Nothing `register` (fmap fmap ((,) <$> rd) <*> (refunc trans <$> result))
 
 {-
 condWrite :: (Signal (Maybe (addr, dt)) -> Signal addr -> Signal dt)
