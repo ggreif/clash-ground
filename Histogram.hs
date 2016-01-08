@@ -28,7 +28,11 @@ maybeWrite ram wr rd = ram wrAddr rd wrEn wrData
 
 condWrite :: (Signal (Maybe (addr, dt)) -> Signal addr -> Signal dt)
           -> (dt -> Maybe dt) -> Signal addr -> Signal dt
-condWrite ram trans = condSigWrite ram (pure trans)
+--condWrite ram trans = condSigWrite ram (pure trans)
+condWrite ram trans rd = result
+  where result = ram wr rd
+        rd' = const Nothing `register` fmap fmap ((,) <$> rd)
+        wr = rd' <*> (trans <$> result)
 
 condSigWrite :: (Signal (Maybe (addr, dt)) -> Signal addr -> Signal dt)
              -> Signal (dt -> Maybe dt) -> Signal addr -> Signal dt
@@ -55,6 +59,29 @@ condUpdater ram hash out upd inp = result
         dt = ram wr rd
         wr = fmap match upd <*> result
         match f o dt = ($ dt) <$> f o        
+
+class FunctionLike f where
+  type Func f
+  refunc :: f -> Func f
+  refuncSig :: Signal f -> Signal (Func f)
+  refuncSig = fmap refunc
+
+-- Experimental manually defunctionalized version
+condUpdater' :: ( FunctionLike out, Func out ~ (dt -> o)
+                , FunctionLike upd, Func upd ~ (o -> Maybe (dt -> dt)))
+             => (Signal (dt -> Maybe dt) -> Signal addr -> Signal dt)
+            -> Signal out -> Signal upd -> Signal addr -> Signal o
+condUpdater' ram out upd rd = result
+  where result = refuncSig out <*> dt
+        dt = ram wr rd
+        wr = fmap match (refuncSig upd) <*> result
+        match f o dt = ($ dt) <$> f o        
+
+data Uncond (b :: Nat) = PlusOne
+
+instance KnownNat b => FunctionLike (Uncond b) where
+  type Func (Uncond b) = Unsigned b -> Unsigned b
+  refunc PlusOne = (+1)
 
 -- rewrite histo in terms of condWrite
 
