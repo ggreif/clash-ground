@@ -33,15 +33,15 @@ condWrite' ram trans rd = result
         --rd' = const Nothing `register` fmap fmap ((,) <$> rd)
         wr = Nothing `register` (fmap fmap ((,) <$> rd) <*> (refunc trans <$> result))
 
-{-
+
 condWrite :: (Signal (Maybe (addr, dt)) -> Signal addr -> Signal dt)
           -> (dt -> Maybe dt) -> Signal addr -> Signal dt
 --condWrite ram trans = condSigWrite ram (pure trans)
 condWrite ram trans rd = result
   where result = ram wr rd
-        rd' = const Nothing `register` fmap fmap ((,) <$> rd)
-        wr = rd' <*> (trans <$> result)
-- }
+        --rd' = 
+        wr = Nothing `register` (fmap fmap ((,) <$> rd) <*> (trans <$> result))
+{-
 condSigWrite :: (Signal (Maybe (addr, dt)) -> Signal addr -> Signal dt)
              -> Signal (dt -> Maybe dt) -> Signal addr -> Signal dt
 condSigWrite ram trans rd = result
@@ -96,8 +96,8 @@ instance (dt ~ Unsigned b, KnownNat b) => FunctionLike (Uncond b dt) where
 -- rewrite histo in terms of condWrite
 
 histo :: (KnownNat n, KnownNat (2 ^ n), KnownNat b) => Signal (Unsigned n) -> Signal (Unsigned b)
---histo = uncondWrite (maybeWrite $ readNew (blockRamPow2 (repeat 0))) (+1)
-histo = condWrite' (maybeWrite $ readNew (blockRamPow2 (repeat 0))) PlusOne
+histo = condWrite (maybeWrite $ readNew (blockRamPow2 (repeat 0))) (Just . (+1))
+--histo = condWrite' (maybeWrite $ readNew (blockRamPow2 (repeat 0))) PlusOne
 
 --temporarily:
 
