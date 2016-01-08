@@ -26,6 +26,14 @@ maybeWrite ram wr rd = ram wrAddr rd wrEn wrData
         apart Nothing = (False, undefined, undefined)
         (wrEn, wrAddr, wrData) = unbundle (apart <$> wr)
 
+condWrite' :: (dt ~ Unsigned b, KnownNat b) => (Signal (Maybe (addr, dt)) -> Signal addr -> Signal dt)
+          -> Uncond b dt -> Signal addr -> Signal dt
+condWrite' ram trans rd = result
+  where result = ram wr rd
+        rd' = const Nothing `register` fmap fmap ((,) <$> rd)
+        wr = rd' <*> (refunc trans <$> result)
+
+{-
 condWrite :: (Signal (Maybe (addr, dt)) -> Signal addr -> Signal dt)
           -> (dt -> Maybe dt) -> Signal addr -> Signal dt
 --condWrite ram trans = condSigWrite ram (pure trans)
@@ -33,7 +41,7 @@ condWrite ram trans rd = result
   where result = ram wr rd
         rd' = const Nothing `register` fmap fmap ((,) <$> rd)
         wr = rd' <*> (trans <$> result)
-
+- }
 condSigWrite :: (Signal (Maybe (addr, dt)) -> Signal addr -> Signal dt)
              -> Signal (dt -> Maybe dt) -> Signal addr -> Signal dt
 condSigWrite ram trans rd = result
@@ -41,6 +49,7 @@ condSigWrite ram trans rd = result
         rd' = const Nothing `register` fmap fmap ((,) <$> rd)
         wr = rd' <*> (trans <*> result)
 
+{ -
 uncondWrite :: (Signal (Maybe (addr, dt)) -> Signal addr -> Signal dt)
           -> (dt -> dt) -> Signal addr -> Signal dt
 uncondWrite ram trans = condWrite ram (Just . trans)
@@ -48,6 +57,7 @@ uncondWrite ram trans = condWrite ram (Just . trans)
 uncondSigWrite :: (Signal (Maybe (addr, dt)) -> Signal addr -> Signal dt)
           -> Signal (dt -> dt) -> Signal addr -> Signal dt
 uncondSigWrite ram trans = condSigWrite ram ((Just .) <$> trans)
+-}
 
 -- blockRam-backed Moore machine?
 --
@@ -77,20 +87,21 @@ condUpdater' ram out upd rd = result
         wr = fmap match (refuncSig upd) <*> result
         match f o dt = ($ dt) <$> f o        
 
-data Uncond (b :: Nat) = PlusOne
+data Uncond (b :: Nat) dt = PlusOne
 
-instance KnownNat b => FunctionLike (Uncond b) where
-  type Func (Uncond b) = Unsigned b -> Unsigned b
-  refunc PlusOne = (+1)
+instance (dt ~ Unsigned b, KnownNat b) => FunctionLike (Uncond b dt) where
+  type Func (Uncond b dt) = dt -> Maybe dt
+  refunc PlusOne = Just . (+1)
 
 -- rewrite histo in terms of condWrite
 
 histo :: (KnownNat n, KnownNat (2 ^ n), KnownNat b) => Signal (Unsigned n) -> Signal (Unsigned b)
-histo = uncondWrite (maybeWrite $ readNew (blockRamPow2 (repeat 0))) (+1)
+--histo = uncondWrite (maybeWrite $ readNew (blockRamPow2 (repeat 0))) (+1)
+histo = condWrite' (maybeWrite $ readNew (blockRamPow2 (repeat 0))) PlusOne
 
 --temporarily:
 
---readNew = id
+readNew = id
 
 -- #### TEST BENCH ####
 
@@ -99,15 +110,15 @@ topEntity = histo
 
 
 testInput, testInput', testInput'' :: Signal (Unsigned 7)
-testInput'' = stimuliGenerator $ 1 :> 2 :> 0 :> 2 :> 3 :> 0 :> 3 :> 0 :> 3 :> 4 :> 0 :> 1 :> 0 :> Nil
+testInput = stimuliGenerator $ 1 :> 2 :> 0 :> 2 :> 3 :> 0 :> 3 :> 0 :> 3 :> 4 :> 0 :> 1 :> 0 :> Nil
 testInput' = pure 0
-testInput = stimuliGenerator $ 0 :> 0 :> 1 :> 1 :> 2 :> 2 :> 3 :> 3 :> 4 :> 4 :> 5 :> 5 :> 0 :> Nil
+testInput'' = stimuliGenerator $ 0 :> 0 :> 1 :> 1 :> 2 :> 2 :> 3 :> 3 :> 4 :> 4 :> 5 :> 5 :> 0 :> Nil
 
 expectedOutput :: Signal (Unsigned 10) -> Signal Bool
 expectedOutput = outputVerifier $
-                  ---undefined :> 0 :> 0 :> 0 :> 1 :> 0 :> 1 :> 1 :> 2 :> 2 :> 0 :> 3 :> 1 :> 4 :> {- 5 :> -} Nil
+                  undefined :> 0 :> 0 :> 0 :> 1 :> 0 :> 1 :> 1 :> 2 :> 2 :> 0 :> 3 :> 1 :> 4 :> {- 5 :> -} Nil
                   ---undefined :> 0 :> 1 :> 2 :> 3 :> 4 :> 5 :> 6 :> 7 :> 8 :> 9 :> 10 :> 11 :> 12 :> Nil
-                  undefined :> 0 :> 1 :> 0 :> 1 :> 0 :> 1 :> 0 :> 1 :> 0 :> 1 :> 0 :> 1 :> 2 :> Nil
+                  ---undefined :> 0 :> 1 :> 0 :> 1 :> 0 :> 1 :> 0 :> 1 :> 0 :> 1 :> 0 :> 1 :> 2 :> Nil
 
 test = L.takeWhile not . L.drop 1 . sample $ expectedOutput (topEntity testInput)
 
