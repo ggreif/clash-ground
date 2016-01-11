@@ -26,14 +26,18 @@ maybeWrite ram wr rd = ram wrAddr rd wrEn wrData
         apart Nothing = (False, undefined, undefined)
         (wrEn, wrAddr, wrData) = unbundle (apart <$> wr)
 
-{-
+
 condWrite' :: (dt ~ Unsigned b, KnownNat b) => (Signal (Maybe (addr, dt)) -> Signal addr -> Signal dt)
           -> Uncond b dt -> Signal addr -> Signal dt
 condWrite' ram trans rd = result
   where result = ram wr rd
         --rd' = const Nothing `register` fmap fmap ((,) <$> rd)
-        wr = Nothing `register` (fmap fmap ((,) <$> rd) <*> (refunc trans <$> result))
--}
+        --rd' :: Signal (Maybe _)
+        rd' = Nothing `register` fmap Just rd
+        wr = refunc trans <$> rd' <*> result
+        refunc PlusOne (Just addr) dt = Just (addr, dt + 1)
+        refunc _ _ _ = Nothing
+
 
 condWrite :: (Signal (Maybe (addr, dt)) -> Signal addr -> Signal dt)
           -> (dt -> Maybe dt) -> Signal addr -> Signal dt
@@ -89,8 +93,9 @@ condUpdater' ram out upd rd = result
         wr = fmap match (refuncSig upd) <*> result
         match f o dt = ($ dt) <$> f o        
 
+-}
 data Uncond (b :: Nat) dt = PlusOne
-
+{-
 instance (dt ~ Unsigned b, KnownNat b) => FunctionLike (Uncond b dt) where
   type Func (Uncond b dt) = dt -> Maybe dt
   refunc PlusOne = Just . (+1)
@@ -99,8 +104,8 @@ instance (dt ~ Unsigned b, KnownNat b) => FunctionLike (Uncond b dt) where
 -- rewrite histo in terms of condWrite
 
 histo :: (KnownNat n, KnownNat (2 ^ n), KnownNat b) => Signal (Unsigned n) -> Signal (Unsigned b)
-histo = condWrite (maybeWrite $ readNew (blockRamPow2 (repeat 0))) (Just . (+1))
---histo = condWrite' (maybeWrite $ readNew (blockRamPow2 (repeat 0))) PlusOne
+--histo = condWrite (maybeWrite $ readNew (blockRamPow2 (repeat 0))) (Just . (+1))
+histo = condWrite' (maybeWrite $ readNew (blockRamPow2 (repeat 0))) PlusOne
 
 --temporarily:
 
