@@ -26,13 +26,14 @@ maybeWrite ram wr rd = ram wrAddr rd wrEn wrData
         apart Nothing = (False, undefined, undefined)
         (wrEn, wrAddr, wrData) = unbundle (apart <$> wr)
 
+{-
 condWrite' :: (dt ~ Unsigned b, KnownNat b) => (Signal (Maybe (addr, dt)) -> Signal addr -> Signal dt)
           -> Uncond b dt -> Signal addr -> Signal dt
 condWrite' ram trans rd = result
   where result = ram wr rd
         --rd' = const Nothing `register` fmap fmap ((,) <$> rd)
         wr = Nothing `register` (fmap fmap ((,) <$> rd) <*> (refunc trans <$> result))
-
+-}
 
 condWrite :: (Signal (Maybe (addr, dt)) -> Signal addr -> Signal dt)
           -> (dt -> Maybe dt) -> Signal addr -> Signal dt
@@ -59,6 +60,7 @@ uncondSigWrite :: (Signal (Maybe (addr, dt)) -> Signal addr -> Signal dt)
 uncondSigWrite ram trans = condSigWrite ram ((Just .) <$> trans)
 -}
 
+{-
 -- blockRam-backed Moore machine?
 --
 condUpdater :: (Signal (dt -> Maybe dt) -> Signal addr -> Signal dt)
@@ -92,6 +94,7 @@ data Uncond (b :: Nat) dt = PlusOne
 instance (dt ~ Unsigned b, KnownNat b) => FunctionLike (Uncond b dt) where
   type Func (Uncond b dt) = dt -> Maybe dt
   refunc PlusOne = Just . (+1)
+-}
 
 -- rewrite histo in terms of condWrite
 
@@ -101,7 +104,7 @@ histo = condWrite (maybeWrite $ readNew (blockRamPow2 (repeat 0))) (Just . (+1))
 
 --temporarily:
 
-readNew = id
+--readNew = id
 
 -- #### TEST BENCH ####
 
