@@ -41,11 +41,18 @@ condWrite' ram trans rd = result
 
 condWrite :: (Signal (Maybe (addr, dt)) -> Signal addr -> Signal dt)
           -> (dt -> Maybe dt) -> Signal addr -> Signal dt
---condWrite ram trans = condSigWrite ram (pure trans)
-condWrite ram trans rd = result
+condWrite ram trans = condSigWrite ram (pure trans)
+--condWrite ram trans rd = result
+--  where result = ram wr rd
+--        --rd' = 
+--        wr = Nothing `register` (fmap fmap ((,) <$> rd) <*> (trans <$> result))
+
+
+condSigWrite :: (Signal (Maybe (addr, dt)) -> Signal addr -> Signal dt)
+             -> Signal (dt -> Maybe dt) -> Signal addr -> Signal dt
+condSigWrite ram trans rd = result
   where result = ram wr rd
-        --rd' = 
-        wr = Nothing `register` (fmap fmap ((,) <$> rd) <*> (trans <$> result))
+        wr = Nothing `register` (fmap fmap ((,) <$> rd) <*> (trans <*> result))
 {-
 condSigWrite :: (Signal (Maybe (addr, dt)) -> Signal addr -> Signal dt)
              -> Signal (dt -> Maybe dt) -> Signal addr -> Signal dt
