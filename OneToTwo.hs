@@ -28,7 +28,7 @@ inp'' = fmap (fmap (fmap (+1))) inp' -- introduces bit-errors on all three chann
 outp'' = decode1x2 inp''
 
 
-inp''' = fmap (\(a:>b:>c:>Nil) -> a:>Nothing:>c:>Nil) inp' -- loss of channel b
+inp''' = fmap (\(a:>_:>c:>Nil) -> a:>Nothing:>c:>Nil) inp' -- loss of channel b
 outp''' = decode1x2 inp'''
 
 topEntity :: Signal (Vec 2 (Unsigned 12)) -> Signal (Maybe (Vec 2 (Unsigned 12), Bool))
