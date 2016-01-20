@@ -15,3 +15,21 @@ decode1x2 = selectV3 . unbundle
         select _ _ _ = Nothing
         selectV3 :: FiniteBits d => Vec 3 (Signal (Maybe d)) -> Signal (Maybe (Vec 2 d, Bool))
         selectV3 (a:>b:>a'b:>Nil) = select <$> a <*> b <*> a'b
+
+i0,i1 :: Signal (Unsigned 5)
+i0 = 7 `register` i1 --pure 7
+i1 = 0xe `register` (i0 + i1) -- pure 0xe
+inp = encode1x2 (bundle (i0:>i1:>Nil))
+
+inp' = fmap (fmap Just) inp -- happy unperturbed channels
+outp = decode1x2 inp'
+
+inp'' = fmap (fmap (fmap (+1))) inp' -- introduces bit-errors on all three channels
+outp'' = decode1x2 inp''
+
+
+inp''' = fmap (\(a:>b:>c:>Nil) -> a:>Nothing:>c:>Nil) inp' -- loss of channel b
+outp''' = decode1x2 inp'''
+
+topEntity :: Signal (Vec 2 (Unsigned 12)) -> Signal (Maybe (Vec 2 (Unsigned 12), Bool))
+topEntity = decode1x2 . fmap (fmap Just) . encode1x2
