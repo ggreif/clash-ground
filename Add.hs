@@ -8,13 +8,13 @@ import CLaSH.Prelude
 import qualified Data.List as L
 import Data.Maybe
 
-data Exp = Lit Int | Add Exp Exp deriving Show
+data Exp = Lit Int | Exp `Add` Exp deriving Show
 
 type Eval exp = forall k . CONT k -> exp -> k
 
 eval :: Eval Exp
 eval c (\case Lit (exec c -> n') -> n'
-              Add (eval (NEXT c) -> a') (a' -> b') -> b'
+              (eval (NEXT c) -> a') `Add` (a' -> b') -> b'
         -> res') = res'
 
 
@@ -31,22 +31,24 @@ exec HALT a = a
 
 -- mealy approach
 
-type State = (Vec 10 DO, ROM, Maybe Int, DO)
-data DO = DOHALT | DONEXT | DOADD Int deriving Show
+type State = (Vec 10 DO, ROM, Maybe Int)
+data DO = DOHALT | DONEXT ROM | DOADD Int deriving Show
 type ROM = Unsigned 10
 
 
 machine = mealy adder startState
-startState = (repeat DOHALT, 0, Nothing, DONEXT)
-reast b (a, _, c, d) = (a, b, c, d)
+startState = (repeat DOHALT, 0, Nothing)
+reast b (a, _, c) = (a, b, c)
 
 adder :: State -> Maybe ROM -> (State, Maybe Int)
 adder _ (Just rom) = (reast rom startState, Nothing)
 --adder _ (Just (ram' -> ast)) = (reast ast startState, Nothing)
-adder (_, _, res@Just{}, DOHALT) Nothing = (startState, res)
-adder (DONEXT :> stk, (ram'->Left i), Nothing, DONEXT) Nothing = ((DOADD i :> stk, 0, Nothing, DONEXT), Nothing)
+adder (done@(DOHALT:>_), _, res@Just{}) Nothing = ((done, 0, res), res)
+adder (DONEXT rom:> stk, (ram'->Left i), Nothing) Nothing = ((stk :< DOHALT, 0, Just i), Nothing)
+adder (stk, (ram'->Right (a,b)), Nothing) Nothing = ((DONEXT a+>>stk, b, Nothing), Nothing)
+adder (DONEXT _:> stk, (ram'->Right (a,b)), Just i) Nothing = ((DOADD i:>stk, 0, Nothing), Nothing)
 
-feed = Just 0 `register` pure Nothing
+feed = Just 2 `register` pure Nothing
 
 samp = sampleN 30 $ machine feed
 
