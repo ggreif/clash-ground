@@ -28,6 +28,28 @@ exec (ADD c a) (exec c . (a+) -> res) = res
 exec (NEXT (ADD -> c)) (eval . c -> res) = res
 exec HALT a = a
 
+
+-- mealy approach
+
+type State = (Vec 10 DO, ROM, Maybe Int, DO)
+data DO = DOHALT | DONEXT | DOADD Int deriving Show
+type ROM = Unsigned 10
+
+
+machine = mealy adder startState
+startState = (repeat DOHALT, 0, Nothing, DONEXT)
+reast b (a, _, c, d) = (a, b, c, d)
+
+adder :: State -> Maybe ROM -> (State, Maybe Int)
+adder _ (Just rom) = (reast rom startState, Nothing)
+--adder _ (Just (ram' -> ast)) = (reast ast startState, Nothing)
+adder (_, _, res@Just{}, DOHALT) Nothing = (startState, res)
+adder (DONEXT :> stk, (ram'->Left i), Nothing, DONEXT) Nothing = ((DOADD i :> stk, 0, Nothing, DONEXT), Nothing)
+
+feed = Just 0 `register` pure Nothing
+
+samp = sampleN 30 $ machine feed
+
 -- RAM-backed expression tree
 type EXP addr = addr -> Either Int (addr, addr)
 
