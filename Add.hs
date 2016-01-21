@@ -25,7 +25,8 @@ data CONT k where
 
 exec :: CONT k -> Int -> k
 exec (ADD c a) (exec c . (a+) -> res) = res
-exec (NEXT c) (eval . ADD c -> res) = res
+--exec (NEXT c) (eval . ADD c -> res) = res
+exec (NEXT (ADD -> c)) (eval . c -> res) = res
 exec HALT a = a
 
 {-
