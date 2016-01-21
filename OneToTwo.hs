@@ -31,5 +31,8 @@ outp'' = decode1x2 inp''
 inp''' = (\(a:>_:>c:>Nil) -> a:>Nothing:>c:>Nil) <$> inp' -- loss of channel b
 outp''' = decode1x2 inp'''
 
+inp'4 = (fmap (0b10 `xor`):>id:>id:>Nil <*>) <$> inp' -- bit inversion on channel a
+outp'4 = decode1x2 inp'4
+
 topEntity :: Signal (Vec 2 (Unsigned 12)) -> Signal (Maybe (Vec 2 (Unsigned 12), Bool))
 topEntity = decode1x2 . fmap (fmap Just) . encode1x2
