@@ -25,9 +25,33 @@ data CONT k where
 
 exec :: CONT k -> Int -> k
 exec (ADD c a) (exec c . (a+) -> res) = res
---exec (NEXT c) (eval . ADD c -> res) = res
 exec (NEXT (ADD -> c)) (eval . c -> res) = res
 exec HALT a = a
+
+-- RAM-backed expression tree
+type EXP addr = addr -> Either Int (addr, addr)
+
+topEntity :: Signal (Maybe (Unsigned 10)) -> Maybe Int
+topEntity = undefined
+  where eval :: (Eq sp, Num sp) => Signal addr -> Signal sp -> Signal Int -> Signal Int
+        eval = liftA3 eval'
+        eval' :: (Eq sp, Num sp) => {-Either Int (addr, addr)-}addr -> sp -> Int -> Int
+        eval' exp 0 acc = acc
+        ram :: (Eq addr, Num addr) => Signal addr -> Signal (Either Int (addr, addr))
+        ram = liftA ram'
+
+
+
+ram' 0 = Right (1, 2)
+ram' 1 = Left 1
+ram' 2 = Right (3, 4)
+ram' 3 = Left 30
+ram' 4 = Left 40
+
+-- TEST
+
+testInput = stimuliGenerator $ Just 0 :> Nothing :> Nothing :> Nil
+
 
 {-
 
