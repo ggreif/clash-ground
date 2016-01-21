@@ -32,13 +32,13 @@ exec HALT a = a
 type EXP addr = addr -> Either Int (addr, addr)
 
 topEntity :: Signal (Maybe (Unsigned 10)) -> Signal (Maybe Int)
-topEntity = undefined
+topEntity _ = snd <$> eval (pure (0, 0)) (pure 6666)
   where eval :: (Eq sp, Num sp) => Signal (addr, sp) -> Signal Int -> Signal (Int, Maybe Int)
         eval = liftA2 (uncurry eval')
         eval' :: (Eq sp, Num sp) => {-Either Int (addr, addr)-}addr -> sp -> Int -> (Int, Maybe Int)
         eval' exp 0 acc = (acc, Just acc)
         ram :: (Eq addr, Num addr) => Signal addr -> Signal (Either Int (addr, addr))
-        ram = liftA ram'
+        ram addr = undefined `register` liftA ram' addr -- simulate block ram
 
 
 
