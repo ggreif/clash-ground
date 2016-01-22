@@ -16,6 +16,7 @@ type Exp = Fix ExpF
 
 pattern Lit i = Fix (LitF i)
 pattern Add a b <- Fix ((coerce -> a) `AddF` (coerce -> b))
+  where Add a b = Fix ((coerce a) `AddF` (coerce b))
 
 type Eval exp = forall k . CONT k -> exp -> k
 
