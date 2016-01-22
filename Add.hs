@@ -8,9 +8,16 @@ import CLaSH.Prelude
 import qualified Data.List as L
 import Data.Maybe
 import Debug.Trace (trace, traceShowId)
+import Data.Coerce
 
-data ExpF a = LitF Int | ExpF a `AddF` ExpF a deriving (Functor, Show)
-data Exp = Lit Int | Exp `Add` Exp deriving Show
+data ExpF a = LitF Int | a `AddF` a deriving (Functor, Show)
+newtype Fix f = Fix (f (Fix f)) -- deriving Show
+type Exp = Fix ExpF
+
+pattern Lit i = Fix (LitF i)
+pattern Add a b <- Fix ((coerce -> a) `AddF` (coerce -> b))
+
+--data Exp = Lit Int | Exp `Add` Exp deriving Show
 
 type Eval exp = forall k . CONT k -> exp -> k
 
@@ -42,8 +49,8 @@ machine = mealy adder startState
 startState = (repeat DOHALT, Enter 0)
 reAst b (a, _) = (a, Enter b)
 
-pattern EnterAdd a b <- Enter (rom'->Right (a,b))
-pattern EnterLit i <- Enter (rom'->Left i)
+pattern EnterAdd a b <- Enter (rom' -> a `AddF` b)
+pattern EnterLit i <- Enter (rom' -> LitF i)
 go a = (trace (show a) a, Nothing)
 trivial (Return j) = j
 trivial (EnterLit j) = j
@@ -79,12 +86,15 @@ topEntity _ = snd <$> eval (pure (0, 0)) (pure 6666)
         ram addr = undefined `register` liftA rom' addr -- simulate block ram
 -}
 
-rom' 0 = Right (1, 2)
-rom' 1 = Left 1
-rom' 2 = Right (3, 3)
-rom' 3 = Right (4, 5)
-rom' 4 = Left 40
-rom' 5 = Left 50
+type AddI = ExpF ROM
+
+rom' :: ROM -> ExpF ROM
+rom' 0 = 1 `AddF` 2
+rom' 1 = LitF 1
+rom' 2 = 3 `AddF` 3
+rom' 3 = 4 `AddF` 5
+rom' 4 = LitF 40
+rom' 5 = LitF 50
 
 
 ---------------
