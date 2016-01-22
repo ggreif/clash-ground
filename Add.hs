@@ -30,28 +30,39 @@ exec HALT a = a
 
 
 -- mealy approach
-
-type State = (Vec 10 DO, Either ROM Int)
+data Direction = Enter ROM | Return Int deriving Show
+type State = (Vec 10 DO, Direction)
 data DO = DOHALT | DONEXT ROM | DOADD Int deriving Show
 type ROM = Unsigned 10
 
 
 machine = mealy adder startState
-startState = (repeat DOHALT, Left 0)
-reast b (a, _) = (a, Left b)
+startState = (repeat DOHALT, Enter 0)
+reast b (a, _) = (a, Enter b)
+
+pattern EnterAdd a b <- Enter (rom'->Right (a,b))
+pattern EnterLit i <- Enter (rom'->Left i)
 
 adder :: State -> Maybe ROM -> (State, Maybe Int)
-adder _ (Just rom) = (reast rom startState, Nothing)
-adder (done@(DOHALT :> _), Right res) Nothing = ((done, Right res), Just res)
-adder (DOADD i :> stk, Right j) Nothing = ((stk :< DOHALT, Right $ i+j), Nothing)
-adder (DONEXT rom :> stk, Left (ram'->Left i)) Nothing = ((DOADD i :> stk, Left rom), Nothing)
-adder (stk, Left (ram'->Right (a,b))) Nothing = ((DONEXT b +>> stk, Left a), Nothing)
-adder (DOADD i :> stk, Left (ram'->Left j)) Nothing = ((stk :< DOHALT, Right $ i+j), Nothing)
+adder _ (Just rom) = (reast rom startState, Nothing) -- reset
+
+adder (done@(DOHALT :> _), Return res) Nothing = ((done, Return res), Just res)
+--adder (DOADD i :> DOADD j :> stk, Return k) Nothing = ((stk :< DOHALT :< DOHALT, Return $ i+j+k), Nothing)
+adder (DOADD i :> stk, Return j) Nothing = ((stk :< DOHALT, Return $ i+j), Nothing)
+adder (DONEXT rom :> stk, EnterLit i) Nothing = ((DOADD i :> stk, Enter rom), Nothing)
+adder (DONEXT rom :> stk, Return i) Nothing = ((DOADD i :> stk, Enter rom), Nothing)
+adder (stk, EnterAdd a b) Nothing = ((DONEXT b +>> stk, Enter a), Nothing)
+adder (DOADD i :> stk, EnterLit j) Nothing = ((stk :< DOHALT, Return $ i+j), Nothing)
+adder (show -> problem) _ = error problem
 
 feed = Just 0 `register` pure Nothing
 
 samp = sampleN 30 $ machine feed
 
+topEntity :: Signal (Maybe ROM) -> Signal (Maybe Int)
+topEntity = machine
+
+{-
 -- RAM-backed expression tree
 type EXP addr = addr -> Either Int (addr, addr)
 
@@ -62,23 +73,25 @@ topEntity _ = snd <$> eval (pure (0, 0)) (pure 6666)
         eval' :: (Eq sp, Num sp) => {-Either Int (addr, addr)-}addr -> sp -> Int -> (Int, Maybe Int)
         eval' exp 0 acc = (acc, Just acc)
         ram :: (Eq addr, Num addr) => Signal addr -> Signal (Either Int (addr, addr))
-        ram addr = undefined `register` liftA ram' addr -- simulate block ram
+        ram addr = undefined `register` liftA rom' addr -- simulate block ram
+-}
 
-
-
-ram' 0 = Right (1, 2)
-ram' 1 = Left 1
-ram' 2 = Right (3, 4)
-ram' 3 = Left 30
-ram' 4 = Left 40
+rom' 0 = Right (1, 2)
+rom' 1 = Left 1
+rom' 2 = Right (3, 4)
+rom' 3 = Right (4, 5)
+rom' 4 = Left 40
+rom' 5 = Left 50
 
 
 ---------------
 -- TEST HARNESS
 ---------------
 
+testInput :: Signal (Maybe ROM)
 testInput = stimuliGenerator $ Just 0 :> Nothing :> Nothing :> Nil
 
+expectedOutput :: Signal (Maybe Int) -> Signal Bool
 expectedOutput = outputVerifier $  Nothing :> Nothing :> Nothing :> Just 71 :> Nil
 
 test = {-Prelude.drop 1-} (sampleN 4 (expectedOutput $ topEntity testInput))
