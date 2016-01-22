@@ -38,22 +38,22 @@ type ROM = Unsigned 10
 
 machine = mealy adder startState
 startState = (repeat DOHALT, Enter 0)
-reast b (a, _) = (a, Enter b)
+reAst b (a, _) = (a, Enter b)
 
 pattern EnterAdd a b <- Enter (rom'->Right (a,b))
 pattern EnterLit i <- Enter (rom'->Left i)
 go a = (a, Nothing)
 
 adder :: State -> Maybe ROM -> (State, Maybe Int)
-adder _ (Just rom) = (reast rom startState, Nothing) -- reset
+adder _ (Just rom) = (reAst rom startState, Nothing) -- reset
 
 adder (done@(DOHALT :> _), Return res) Nothing = ((done, Return res), Just res)
---adder (DOADD i :> DOADD j :> stk, Return k) Nothing = ((stk :< DOHALT :< DOHALT, Return $ i+j+k), Nothing)
-adder (DOADD i :> stk, EnterLit j) Nothing = go (stk :< DOHALT, Return $ i+j)
-adder (DOADD i :> stk, Return j) Nothing = go (stk :< DOHALT, Return $ i+j)
-adder (DONEXT rom :> stk, EnterLit i) Nothing = go (DOADD i :> stk, Enter rom)
-adder (DONEXT rom :> stk, Return i) Nothing = go (DOADD i :> stk, Enter rom)
 adder (stk, EnterAdd a b) Nothing = go (DONEXT b +>> stk, Enter a)
+--adder (DOADD i :> DOADD j :> stk, Return k) Nothing = ((stk :< DOHALT :< DOHALT, Return $ i+j+k), Nothing)
+adder (DOADD i :> stk, ((\case Return j->j; EnterLit j->j)->j)) Nothing = go (stk :< DOHALT, Return $ i+j)
+--adder (DOADD i :> stk, Return j) Nothing = go (stk :< DOHALT, Return $ i+j)
+adder (DONEXT rom :> stk, ((\case Return i->i; EnterLit i->i)->i)) Nothing = go (DOADD i :> stk, Enter rom)
+--adder (DONEXT rom :> stk, EnterLit i) Nothing = go (DOADD i :> stk, Enter rom)
 adder (show -> problem) _ = error problem
 
 feed = Just 0 `register` pure Nothing
@@ -79,7 +79,7 @@ topEntity _ = snd <$> eval (pure (0, 0)) (pure 6666)
 
 rom' 0 = Right (1, 2)
 rom' 1 = Left 1
-rom' 2 = Right (3, 4)
+rom' 2 = Right (3, 3)
 rom' 3 = Right (4, 5)
 rom' 4 = Left 40
 rom' 5 = Left 50
