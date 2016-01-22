@@ -17,8 +17,6 @@ type Exp = Fix ExpF
 pattern Lit i = Fix (LitF i)
 pattern Add a b <- Fix ((coerce -> a) `AddF` (coerce -> b))
 
---data Exp = Lit Int | Exp `Add` Exp deriving Show
-
 type Eval exp = forall k . CONT k -> exp -> k
 
 eval :: Eval Exp
@@ -71,20 +69,6 @@ samp = sampleN 30 $ machine feed
 
 topEntity :: Signal (Maybe ROM) -> Signal (Maybe Int)
 topEntity = machine
-
-{-
--- RAM-backed expression tree
-type EXP addr = addr -> Either Int (addr, addr)
-
-topEntity :: Signal (Maybe (Unsigned 10)) -> Signal (Maybe Int)
-topEntity _ = snd <$> eval (pure (0, 0)) (pure 6666)
-  where eval :: (Eq sp, Num sp) => Signal (addr, sp) -> Signal Int -> Signal (Int, Maybe Int)
-        eval = liftA2 (uncurry eval')
-        eval' :: (Eq sp, Num sp) => {-Either Int (addr, addr)-}addr -> sp -> Int -> (Int, Maybe Int)
-        eval' exp 0 acc = (acc, Just acc)
-        ram :: (Eq addr, Num addr) => Signal addr -> Signal (Either Int (addr, addr))
-        ram addr = undefined `register` liftA rom' addr -- simulate block ram
--}
 
 type AddI = ExpF ROM
 
