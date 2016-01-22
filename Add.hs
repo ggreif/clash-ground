@@ -42,17 +42,18 @@ reast b (a, _) = (a, Enter b)
 
 pattern EnterAdd a b <- Enter (rom'->Right (a,b))
 pattern EnterLit i <- Enter (rom'->Left i)
+go a = (a, Nothing)
 
 adder :: State -> Maybe ROM -> (State, Maybe Int)
 adder _ (Just rom) = (reast rom startState, Nothing) -- reset
 
 adder (done@(DOHALT :> _), Return res) Nothing = ((done, Return res), Just res)
 --adder (DOADD i :> DOADD j :> stk, Return k) Nothing = ((stk :< DOHALT :< DOHALT, Return $ i+j+k), Nothing)
-adder (DOADD i :> stk, Return j) Nothing = ((stk :< DOHALT, Return $ i+j), Nothing)
-adder (DONEXT rom :> stk, EnterLit i) Nothing = ((DOADD i :> stk, Enter rom), Nothing)
-adder (DONEXT rom :> stk, Return i) Nothing = ((DOADD i :> stk, Enter rom), Nothing)
-adder (stk, EnterAdd a b) Nothing = ((DONEXT b +>> stk, Enter a), Nothing)
-adder (DOADD i :> stk, EnterLit j) Nothing = ((stk :< DOHALT, Return $ i+j), Nothing)
+adder (DOADD i :> stk, EnterLit j) Nothing = go (stk :< DOHALT, Return $ i+j)
+adder (DOADD i :> stk, Return j) Nothing = go (stk :< DOHALT, Return $ i+j)
+adder (DONEXT rom :> stk, EnterLit i) Nothing = go (DOADD i :> stk, Enter rom)
+adder (DONEXT rom :> stk, Return i) Nothing = go (DOADD i :> stk, Enter rom)
+adder (stk, EnterAdd a b) Nothing = go (DONEXT b +>> stk, Enter a)
 adder (show -> problem) _ = error problem
 
 feed = Just 0 `register` pure Nothing
