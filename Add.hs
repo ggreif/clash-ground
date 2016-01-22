@@ -51,9 +51,7 @@ adder (done@(DOHALT :> _), Return res) Nothing = ((done, Return res), Just res)
 adder (stk, EnterAdd a b) Nothing = go (DONEXT b +>> stk, Enter a)
 --adder (DOADD i :> DOADD j :> stk, Return k) Nothing = ((stk :< DOHALT :< DOHALT, Return $ i+j+k), Nothing)
 adder (DOADD i :> stk, ((\case Return j->j; EnterLit j->j)->j)) Nothing = go (stk :< DOHALT, Return $ i+j)
---adder (DOADD i :> stk, Return j) Nothing = go (stk :< DOHALT, Return $ i+j)
 adder (DONEXT rom :> stk, ((\case Return i->i; EnterLit i->i)->i)) Nothing = go (DOADD i :> stk, Enter rom)
---adder (DONEXT rom :> stk, EnterLit i) Nothing = go (DOADD i :> stk, Enter rom)
 adder (show -> problem) _ = error problem
 
 feed = Just 0 `register` pure Nothing
