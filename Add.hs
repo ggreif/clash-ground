@@ -1,4 +1,4 @@
-{-# LANGUAGE ViewPatterns, LambdaCase, RankNTypes, GADTs, PatternSynonyms, KindSignatures, MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE ViewPatterns, LambdaCase, RankNTypes, GADTs, PatternSynonyms, KindSignatures, MultiParamTypeClasses, FlexibleInstances, DeriveFunctor #-}
 
 module Add where
 
@@ -7,7 +7,9 @@ module Add where
 import CLaSH.Prelude
 import qualified Data.List as L
 import Data.Maybe
+import Debug.Trace (trace, traceShowId)
 
+data ExpF a = LitF Int | ExpF a `AddF` ExpF a deriving (Functor, Show)
 data Exp = Lit Int | Exp `Add` Exp deriving Show
 
 type Eval exp = forall k . CONT k -> exp -> k
@@ -42,7 +44,7 @@ reAst b (a, _) = (a, Enter b)
 
 pattern EnterAdd a b <- Enter (rom'->Right (a,b))
 pattern EnterLit i <- Enter (rom'->Left i)
-go a = (a, Nothing)
+go a = (trace (show a) a, Nothing)
 trivial (Return j) = j
 trivial (EnterLit j) = j
 
@@ -54,7 +56,7 @@ adder (stk, EnterAdd a b) Nothing = go (DONEXT b +>> stk, Enter a)
 --adder (DOADD i :> DOADD j :> stk, Return k) Nothing = ((stk :< DOHALT :< DOHALT, Return $ i+j+k), Nothing)
 adder (DOADD i :> stk, (trivial->j)) Nothing = go (stk :< DOHALT, Return $ i+j)
 adder (DONEXT rom :> stk, (trivial->i)) Nothing = go (DOADD i :> stk, Enter rom)
-adder (show -> problem) _ = error problem
+--adder (show -> problem) _ = error problem
 
 feed = Just 0 `register` pure Nothing
 
