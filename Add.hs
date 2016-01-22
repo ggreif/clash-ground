@@ -44,9 +44,10 @@ adder :: State -> Maybe ROM -> (State, Maybe Int)
 adder _ (Just rom) = (reast rom startState, Nothing)
 --adder _ (Just (ram' -> ast)) = (reast ast startState, Nothing)
 adder (done@(DOHALT:>_), _, res@Just{}) Nothing = ((done, 0, res), res)
-adder (DONEXT rom:> stk, (ram'->Left i), Nothing) Nothing = ((stk :< DOHALT, 0, Just i), Nothing)
-adder (stk, (ram'->Right (a,b)), Nothing) Nothing = ((DONEXT a+>>stk, b, Nothing), Nothing)
+adder (DONEXT rom:> stk, (ram'->Left i), Nothing) Nothing = ((DOADD i:>stk, rom, Nothing), Nothing)
+adder (stk, (ram'->Right (a,b)), Nothing) Nothing = ((DONEXT b+>>stk, a, Nothing), Nothing)
 adder (DONEXT _:> stk, (ram'->Right (a,b)), Just i) Nothing = ((DOADD i:>stk, 0, Nothing), Nothing)
+adder (DOADD i :> stk, (ram'->Left j), Nothing) Nothing = ((stk:<DOHALT, 0, Just $ i+j), Nothing)
 
 feed = Just 2 `register` pure Nothing
 
