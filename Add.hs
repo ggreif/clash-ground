@@ -9,6 +9,7 @@ import qualified Data.List as L
 import Data.Maybe
 import Debug.Trace (trace, traceShowId)
 import Data.Coerce
+import Test.QuickCheck
 
 data ExpF a = LitF Int | a `AddF` a deriving (Functor, Show)
 newtype Fix f = Fix (f (Fix f)) -- deriving Show
@@ -94,6 +95,13 @@ expectedOutput = outputVerifier $  Nothing :> Nothing :> Nothing :> Just 71 :> N
 
 test = {-Prelude.drop 1-} (sampleN 4 (expectedOutput $ topEntity testInput))
 
+
+instance Arbitrary Exp where
+  arbitrary = frequency [ (3, Lit <$> arbitrary)
+                        , (2, Fix <$> (AddF <$> arbitrary <*> arbitrary)) ]
+
+instance Show Exp where
+  show (Fix a) = show a
 
 {-
 
