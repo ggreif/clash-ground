@@ -31,23 +31,24 @@ exec HALT a = a
 
 -- mealy approach
 
-type State = (Vec 10 DO, ROM, Maybe Int)
+type State = (Vec 10 DO, Either ROM Int)
 data DO = DOHALT | DONEXT ROM | DOADD Int deriving Show
 type ROM = Unsigned 10
 
 
 machine = mealy adder startState
-startState = (repeat DOHALT, 0, Nothing)
-reast b (a, _, c) = (a, b, c)
+startState = (repeat DOHALT, Left 0)
+reast b (a, _) = (a, Left b)
 
 adder :: State -> Maybe ROM -> (State, Maybe Int)
 adder _ (Just rom) = (reast rom startState, Nothing)
-adder (done@(DOHALT :> _), _, res@Just{}) Nothing = ((done, 0, res), res)
-adder (DONEXT rom :> stk, (ram'->Left i), Nothing) Nothing = ((DOADD i :> stk, rom, Nothing), Nothing)
-adder (stk, (ram'->Right (a,b)), Nothing) Nothing = ((DONEXT b+>>stk, a, Nothing), Nothing)
-adder (DOADD i :> stk, (ram'->Left j), Nothing) Nothing = ((stk :< DOHALT, 0{-!-}, Just $ i+j), Nothing)
+adder (done@(DOHALT :> _), Right res) Nothing = ((done, Right res), Just res)
+adder (DOADD i :> stk, Right j) Nothing = ((stk :< DOHALT, Right $ i+j), Nothing)
+adder (DONEXT rom :> stk, Left (ram'->Left i)) Nothing = ((DOADD i :> stk, Left rom), Nothing)
+adder (stk, Left (ram'->Right (a,b))) Nothing = ((DONEXT b +>> stk, Left a), Nothing)
+adder (DOADD i :> stk, Left (ram'->Left j)) Nothing = ((stk :< DOHALT, Right $ i+j), Nothing)
 
-feed = Just 2 `register` pure Nothing
+feed = Just 0 `register` pure Nothing
 
 samp = sampleN 30 $ machine feed
 
