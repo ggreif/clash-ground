@@ -37,6 +37,9 @@ exec (ADD c a) (exec c . (a+) -> res) = res
 exec (NEXT (ADD -> c)) (eval . c -> res) = res
 exec HALT a = a
 
+-- TODO
+ -- http://matt.might.net/papers/vanhorn2010abstract.pdf
+ -- make the env/control stack abstract. Ops: get args/deliver result, etc.
 
 -- mealy approach
 data Direction = Enter ROM | Return Int deriving Show
