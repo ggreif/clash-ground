@@ -106,9 +106,19 @@ instance Arbitrary Exp where
 instance Show Exp where
   show (Fix a) = show a
 
+
+toRom :: [Exp] -> Vec (n+1) (ExpF ROM) -> Vec (n+1) (ExpF ROM)
+toRom [] v = v
+toRom (Lit i:more) (_:>v) = LitF i:>v
+--toRom (a `Add` b:more) (_:>v) = LitF i:>v
+
+nums :: Int -> Exp -> (ExpF Int, Int)
+nums n (Lit i) = (LitF i, n+1)
+nums n ((nums n -> (a, n')) `Add` (nums n' -> (b, n''))) = (n `AddF` n', n''+1)
+
 {-
 
-type W = Unsigned 10
+Type W = Unsigned 10
 type DBBits = 4
 type DB = 2^DBBits
 type DBI = Unsigned DB
