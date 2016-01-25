@@ -7,6 +7,7 @@ module Add where
 import CLaSH.Prelude
 import qualified Data.List as L
 import Data.Maybe
+import Control.Arrow (first)
 import Debug.Trace (trace, traceShowId)
 import Data.Coerce
 import Test.QuickCheck
@@ -48,7 +49,8 @@ data DO = DOHALT | DONEXT ROM | DOADD Int deriving Show
 type ROM = Unsigned 10
 
 
-machine = mealy adder startState
+machine = mealy optadder startState
+  where optadder s i = first opt (adder s i)
 startState = (repeat DOHALT, Enter 0)
 reAst b (a, _) = (a, Enter b)
 
@@ -63,10 +65,13 @@ adder _ (Just rom) = (reAst rom startState, Nothing) -- reset
 
 adder (done@(DOHALT :> _), Return res) Nothing = ((done, Return res), Just res)
 adder (stk, EnterAdd a b) Nothing = go (DONEXT b +>> stk, Enter a)
---adder (DOADD i :> DOADD j :> stk, Return k) Nothing = ((stk :< DOHALT :< DOHALT, Return $ i+j+k), Nothing)
 adder (DOADD i :> stk, (trivial->j)) Nothing = go (stk :< DOHALT, Return $ i+j)
 adder (DONEXT rom :> stk, (trivial->i)) Nothing = go (DOADD i :> stk, Enter rom)
 --adder (show -> problem) _ = error problem
+
+opt :: State -> State
+opt (DONEXT rom :> DOADD i :> stk, Return j) = traceShowId ((DOADD (i+j) :> stk) :< DOHALT, Enter rom)
+opt st = st
 
 feed = Just 0 `register` pure Nothing
 
