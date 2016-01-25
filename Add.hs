@@ -71,6 +71,7 @@ adder (DONEXT rom :> stk, (trivial->i)) Nothing = go (DOADD i :> stk, Enter rom)
 
 opt :: State -> State
 opt (DONEXT rom :> DOADD i :> stk, Return j) = traceShowId ((DOADD (i+j) :> stk) :< DOHALT, Enter rom)
+opt (DOADD i :> DOHALT :> stk, Return j) = traceShowId ((DOHALT :> stk) :< DOHALT, Return (i+j))
 opt st = st
 
 feed = Just 0 `register` pure Nothing
