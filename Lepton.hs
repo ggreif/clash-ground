@@ -22,10 +22,9 @@ instance Lam Baryon where
   lam = Barylam
   app = Baryapp
 
-
-
---evalB :: (a~Int) => Baryon a -> a
+-- Here is our standard evaluator:
+--
 evalB :: Baryon a -> a
 evalB (f `Baryapp` a) = evalB f $ evalB a
 evalB (BaryInt i) = i
-evalB (Barylam f) = \a -> evalB (f (BaryVar a))
+evalB (Barylam f) = evalB . f . BaryVar
