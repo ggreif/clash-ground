@@ -1,24 +1,31 @@
+{-# LANGUAGE GADTs #-}
+
 module Lepton where
 
 import CLaSH.Prelude
 
 
 class Lam f where
-  lam :: (f -> f) -> f
-  app :: f -> f -> f
+  lam :: (f a -> f b) -> f (a -> b)
+  app :: f (a -> b) -> f a -> f b
 
 
 
 
-data Baryon a = Barylam (Baryon a -> Baryon a) | Baryapp (Baryon a) (Baryon a) | BaryInt Int
+data Baryon a where
+  Barylam :: (Baryon a -> Baryon b) -> Baryon (a -> b)
+  Baryapp :: Baryon (a -> b) -> Baryon a -> Baryon b
+  BaryInt :: Int -> Baryon Int
+  BaryVar :: a -> Baryon a
 
-instance Lam (Baryon a) where
+instance Lam Baryon where
   lam = Barylam
   app = Baryapp
 
 
 
-
-evalB :: (a~Int) => Baryon a -> a
-evalB (_ `Baryapp` _) = 34
-
+--evalB :: (a~Int) => Baryon a -> a
+evalB :: Baryon a -> a
+evalB (f `Baryapp` a) = evalB f $ evalB a
+evalB (BaryInt i) = i
+evalB (Barylam f) = \a -> evalB (f (BaryVar a))
