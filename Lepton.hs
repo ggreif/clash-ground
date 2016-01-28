@@ -82,8 +82,19 @@ eval' c e = exec c (eval e)  -- (OWK)
 
 data CONT :: * -> * -> *  where
   C0 :: Baryon (a -> b) -> CONT b k -> CONT a k
+  C1 :: a -> CONT b k -> CONT (a -> b) k
   CHALT :: CONT a a
 
 exec :: CONT a k -> a -> k
+
+
+exec (C1 a c) f = exec c (f a)
+
+
+exec (C0 f c) a = eval' (C1 a c) f
+{- Obi-Wan helps -}
+exec (C0 f c) a = exec (C1 a c) (eval f)
+  --where exec (C1 a c) f = exec c (f a) -- see above
+{- help me Obi-Wan! (create C, amend exec) -}
 exec (C0 f c) a = exec c (eval f a)
 exec CHALT a = a
