@@ -31,7 +31,8 @@ instance Val Baryon where
 instance Eval Baryon where
   eval = evalB
 
-instance Functor Baryon -- hmmmm?
+instance Functor Baryon where
+  fmap f = (f <$>)
 
 instance Applicative Baryon where
   pure = BaryVar
