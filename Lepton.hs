@@ -62,9 +62,13 @@ t0 = test
 eval' :: CONT k -> Baryon a -> k
 eval' c (Barylam f) = exec c (evalB . f . BaryVar)
 
+
+
+eval' c (f `Baryapp` a) = eval' (C0 f c) a
+{- Obi-Wan helps -}
 eval' c (f `Baryapp` a) = exec (C0 f c) (eval a)
    --where exec' (C0 f c) a = exec c (eval f a)
-{- Obi-Wan (create C0, amend exec) -}
+{- help me Obi-Wan! (create C0, amend exec) -}
 eval' c (f `Baryapp` a) = exec c (eval f $ eval a)
 {- evalB == eval -}
 eval' c (f `Baryapp` a) = exec c (evalB f $ evalB a)
@@ -73,9 +77,8 @@ eval' c (BaryInt i) = exec c i
 {- ^^ expand evalB -}
 eval' c e = exec c (eval e)  -- (OWK)
 
-data CONT a where
+data CONT :: * -> *  where
   C0 :: Baryon (a -> b) -> CONT k -> CONT k
 
 exec :: CONT k -> a -> k
 exec (C0 f c) a = exec c (eval f a)
---exec = undefined
