@@ -31,6 +31,12 @@ instance Val Baryon where
 instance Eval Baryon where
   eval = evalB
 
+instance Functor Baryon -- hmmmm?
+
+instance Applicative Baryon where
+  pure = BaryVar
+  (<*>) = app
+
 -- Here is our standard evaluator:
 --
 evalB :: Baryon a -> a
@@ -52,8 +58,8 @@ t0 = test
 
 -- derivation of the abstract machine
 
-eval' :: CONT Int -> Baryon Int -> Int -- relax me!
---eval' c (Barylam f) = exec c (evalB . f . BaryVar)
+eval' :: CONT k -> Baryon a -> k
+eval' c (Barylam f) = exec c (evalB . f . BaryVar)
 
 eval' c (f `Baryapp` a) = exec c (evalB f $ evalB a)
 eval' c (BaryVar v) = exec c v
@@ -63,5 +69,5 @@ eval' c e = exec c (eval e)  -- (OWK)
 
 data CONT a
 
-exec :: CONT Int -> Int -> Int -- relax me!
+exec :: CONT k -> a -> k
 exec = undefined
