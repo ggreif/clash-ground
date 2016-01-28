@@ -60,6 +60,9 @@ t0 = test
 -- derivation of the abstract machine
 
 eval' :: CONT a k -> Baryon a -> k
+
+eval' c (Barylam f) = exec c (eval . f . BaryVar)
+{- evalB == eval -}
 eval' c (Barylam f) = exec c (evalB . f . BaryVar)
 
 
@@ -79,6 +82,8 @@ eval' c e = exec c (eval e)  -- (OWK)
 
 data CONT :: * -> * -> *  where
   C0 :: Baryon (a -> b) -> CONT b k -> CONT a k
+  CHALT :: CONT a a
 
 exec :: CONT a k -> a -> k
 exec (C0 f c) a = exec c (eval f a)
+exec CHALT a = a
