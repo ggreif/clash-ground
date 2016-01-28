@@ -49,3 +49,13 @@ test = id `app` (const `app` fortytwo `app` seven)
 
 t0 :: Baryon Int
 t0 = test
+
+-- derivation of the abstract machine
+
+eval' :: CONT Int -> Baryon Int -> Int -- relax me!
+eval' c e = exec c (eval e)  -- (OWK)
+
+data CONT a
+
+exec :: CONT Int -> Int -> Int -- relax me!
+exec = undefined
