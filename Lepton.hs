@@ -12,6 +12,8 @@ class Lam f where
 class Val f where
   int :: Int -> f Int
 
+class Eval f where
+  eval :: f a -> a
 
 data Baryon a where
   Barylam :: (Baryon a -> Baryon b) -> Baryon (a -> b)
@@ -25,6 +27,9 @@ instance Lam Baryon where
 
 instance Val Baryon where
   int = BaryInt
+
+instance Eval Baryon where
+  eval = evalB
 
 -- Here is our standard evaluator:
 --
