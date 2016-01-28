@@ -20,8 +20,6 @@ pattern Lit i = Fix (LitF i)
 pattern Add a b <- Fix ((coerce -> a) `AddF` (coerce -> b))
   where Add a b = Fix ((coerce a) `AddF` (coerce b))
 
---type Eval exp = forall k . CONT k -> exp -> k
-
 eval :: CONT k -> Exp -> k
 eval c (\case Lit (exec c -> n') -> n'
               (eval (NEXT c) -> a') `Add` (a' -> b') -> b'
