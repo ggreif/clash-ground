@@ -53,6 +53,12 @@ t0 = test
 -- derivation of the abstract machine
 
 eval' :: CONT Int -> Baryon Int -> Int -- relax me!
+--eval' c (Barylam f) = exec c (evalB . f . BaryVar)
+
+eval' c (f `Baryapp` a) = exec c (evalB f $ evalB a)
+eval' c (BaryVar v) = exec c v
+eval' c (BaryInt i) = exec c i
+{- ^^ expand evalB -}
 eval' c e = exec c (eval e)  -- (OWK)
 
 data CONT a
