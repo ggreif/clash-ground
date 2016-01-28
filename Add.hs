@@ -1,4 +1,4 @@
-{-# LANGUAGE ViewPatterns, LambdaCase, RankNTypes, GADTs, PatternSynonyms, KindSignatures, MultiParamTypeClasses, FlexibleInstances, DeriveFunctor #-}
+{-# LANGUAGE ViewPatterns, LambdaCase, GADTs, PatternSynonyms, KindSignatures, MultiParamTypeClasses, FlexibleInstances, DeriveFunctor #-}
 
 module Add where
 
@@ -20,9 +20,9 @@ pattern Lit i = Fix (LitF i)
 pattern Add a b <- Fix ((coerce -> a) `AddF` (coerce -> b))
   where Add a b = Fix ((coerce a) `AddF` (coerce b))
 
-type Eval exp = forall k . CONT k -> exp -> k
+--type Eval exp = forall k . CONT k -> exp -> k
 
-eval :: Eval Exp
+eval :: CONT k -> Exp -> k
 eval c (\case Lit (exec c -> n') -> n'
               (eval (NEXT c) -> a') `Add` (a' -> b') -> b'
         -> res') = res'
@@ -73,6 +73,9 @@ opt :: State -> State
 opt (DONEXT rom :> DOADD i :> stk, Return j) = traceShowId ((DOADD (i+j) :> stk) :< DOHALT, Enter rom)
 opt (DOADD i :> DOHALT :> stk, Return j) = traceShowId ((DOHALT :> stk) :< DOHALT, Return (i+j))
 opt st = st
+
+class ControlStack cont {-env?-} where
+  -- pop, deliver
 
 feed = Just 0 `register` pure Nothing
 
