@@ -61,8 +61,11 @@ t0 = test
 
 eval' :: CONT a k -> Baryon a -> k
 
-eval' c (Barylam f) = exec c (eval . f . BaryVar)
-{- evalB == eval -}
+
+eval' c (Barylam f) = exec c (\a -> evalB (f (BaryVar a)))
+{- can we use (DEM) ? -}
+eval' c (Barylam f) = exec c (\a -> evalB (f (BaryVar a)))
+{- eta -}
 eval' c (Barylam f) = exec c (evalB . f . BaryVar)
 
 
@@ -88,7 +91,7 @@ data CONT :: * -> * -> *  where
 exec :: CONT a k -> a -> k
 
 
-exec (C1 a c) f = exec c (f a)
+exec (C1 a c) f = exec c (f a) -- (DEM)
 
 
 exec (C0 f c) a = eval' (C1 a c) f
