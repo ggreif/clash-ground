@@ -11,10 +11,17 @@ import Control.Arrow (first)
 import Debug.Trace (trace, traceShowId)
 import Data.Coerce
 import Test.QuickCheck
+import Data.Map.Strict
 
-data ExpF a = LitF Int | a `AddF` a deriving (Functor, Show)
+data ExpF a = LitF Int | a `AddF` a deriving (Eq, Ord, Functor, Show)
 newtype Fix f = Fix (f (Fix f)) -- deriving Show
 type Exp = Fix ExpF
+
+instance Eq Exp where
+  Fix a == Fix b = a == b
+
+instance Ord Exp where
+  Fix a <= Fix b = a <= b
 
 pattern Lit i = Fix (LitF i)
 pattern Add a b <- Fix ((coerce -> a) `AddF` (coerce -> b))
@@ -119,9 +126,14 @@ toRom [] v = v
 toRom (Lit i:more) (_:>v) = LitF i:>v
 --toRom (a `Add` b:more) (_:>v) = LitF i:>v
 
-nums :: Int -> Exp -> (ExpF Int, Int)
-nums n (Lit i) = (LitF i, n+1)
-nums n ((nums n -> (a, n')) `Add` (nums n' -> (b, n''))) = (n `AddF` n', n''+1)
+
+nums :: Int -> Map Exp Int -> Exp -> (Map Exp Int, Int)
+nums n m l@Lit{} = (insert l n m, n+1)
+nums n m p@(a `Add` b) = case Data.Map.Strict.lookup p m of
+                           Nothing -> (r, n'')
+  where (l, n') = nums (n+1) (insert p n m) a
+        (r, n'') = nums (n'+1) l b
+
 
 {-
 
