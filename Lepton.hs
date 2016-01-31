@@ -20,7 +20,7 @@ data Baryon a where
   Baryapp :: Baryon (a -> b) -> Baryon a -> Baryon b
   BaryInt :: Int -> Baryon Int
   BaryVar :: a -> Baryon a
-  BaryBruijn :: Int -> Baryon a
+  BaryBruijn :: CONT (a -> b) k -> Baryon a
 
 instance Lam Baryon where
   lam = Barylam
@@ -46,6 +46,7 @@ evalB (f `Baryapp` a) = evalB f $ evalB a
 evalB (BaryVar v) = v
 evalB (BaryInt i) = i
 evalB (Barylam f) = evalB . f . BaryVar
+evalB (BaryBruijn (C1 a _)) = a
 
 
 test :: (Lam f, Val f) => f Int
@@ -62,7 +63,12 @@ t0 = test
 
 eval' :: CONT a k -> Baryon a -> k
 
-eval' (C1 a c) (Barylam f) = exec c (evalB (f (BaryVar a)))
+
+
+eval' c'@(C1 a c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capture the stack, later just the stack pointer!
+
+
+eval' (C1 a c) (Barylam f) = exec c (evalB (f (BaryVar a))) -- this is a gamble on the form of the control stack. Does it always hold?
 
 --eval' c (Barylam f) = exec c (\a -> evalB (f (BaryBruijn 0)))
 {- can we use (DEM) ? -}
