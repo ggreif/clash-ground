@@ -20,6 +20,7 @@ data Baryon a where
   Baryapp :: Baryon (a -> b) -> Baryon a -> Baryon b
   BaryInt :: Int -> Baryon Int
   BaryVar :: a -> Baryon a
+  BaryBruijn :: Int -> Baryon a
 
 instance Lam Baryon where
   lam = Barylam
@@ -61,8 +62,9 @@ t0 = test
 
 eval' :: CONT a k -> Baryon a -> k
 
+eval' (C1 a c) (Barylam f) = exec c (evalB (f (BaryVar a)))
 
-eval' c (Barylam f) = exec c (\a -> evalB (f (BaryVar a)))
+--eval' c (Barylam f) = exec c (\a -> evalB (f (BaryBruijn 0)))
 {- can we use (DEM) ? -}
 eval' c (Barylam f) = exec c (\a -> evalB (f (BaryVar a)))
 {- eta -}
