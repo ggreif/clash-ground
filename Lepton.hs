@@ -20,7 +20,7 @@ data Baryon a where
   Baryapp :: Baryon (a -> b) -> Baryon a -> Baryon b
   BaryInt :: Int -> Baryon Int
   BaryVar :: a -> Baryon a
-  BaryBruijn :: CONT (a -> b) k -> Baryon a
+  BaryBruijn :: CONT (a ': s) (a -> b) k -> Baryon a
 
 instance Lam Baryon where
   lam = Barylam
@@ -61,7 +61,7 @@ t0 = test
 
 -- derivation of the abstract machine
 
-eval' :: CONT a k -> Baryon a -> k
+eval' :: CONT s a k -> Baryon a -> k
 
 
 
@@ -91,12 +91,12 @@ eval' c (BaryInt i) = exec c i
 {- ^^ expand evalB -}
 eval' c e = exec c (eval e)  -- (OWK)
 
-data CONT :: * -> * -> *  where
-  C0 :: Baryon (a -> b) -> CONT b k -> CONT a k
-  C1 :: a -> CONT b k -> CONT (a -> b) k
-  CHALT :: CONT a a
+data CONT :: [*] -> * -> * -> *  where
+  C0 :: Baryon (a -> b) -> CONT s b k -> CONT s a k
+  C1 :: a -> CONT s b k -> CONT (a ': s) (a -> b) k
+  CHALT :: CONT '[] a a
 
-exec :: CONT a k -> a -> k
+exec :: CONT s a k -> a -> k
 
 
 exec (C1 a c) f = exec c (f a) -- (DEM)
