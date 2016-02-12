@@ -1,10 +1,9 @@
-{-# LANGUAGE GADTs, RankNTypes, ImpredicativeTypes #-}
+{-# LANGUAGE GADTs, RankNTypes #-}
 
 module Lepton where
 
 import CLaSH.Prelude
 import GHC.Exts
---import Unsafe.Coerce (unsafeCoerce)
 
 class Lam f where
 {-
@@ -53,7 +52,6 @@ evalB :: Baryon s a -> a
 evalB (f `Baryapp` a) = evalB f $ evalB a
 evalB (BaryVar v) = v
 evalB (BaryInt i) = i
---evalB (Barylam f) = evalB . f . unsafeCoerce BaryVar
 evalB (Barylam f) = \x -> evalB (f (BaryVar x))
 --evalB (BaryBruijn (C1 a _)) = a
 
