@@ -81,8 +81,6 @@ eval' (C1 a c) (Barylam f) = exec c (evalB (f (BaryVar a))) -- this is a gamble 
 --eval' c (Barylam f) = exec c (\a -> evalB (f (BaryBruijn 0)))
 {- can we use (DEM) ? -}
 eval' c (Barylam f) = exec c (\a -> evalB (f (BaryVar a)))
-{- eta -}
--- OLD DEF eval' c (Barylam f) = exec c (evalB . f . BaryVar)
 
 
 
