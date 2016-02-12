@@ -27,7 +27,7 @@ data Baryon s a where
   Baryapp :: Baryon s (a -> b) -> Baryon s a -> Baryon s b
   BaryInt :: Int -> Baryon s Int
   BaryVar :: a -> Baryon s a
-  --BaryBruijn :: CONT (s') (a -> b) k -> Baryon s a
+  BaryBruijn :: CONT s' (a -> b) k -> Baryon s a
 
 instance Lam Baryon where
   lam = Barylam
@@ -53,7 +53,7 @@ evalB (f `Baryapp` a) = evalB f $ evalB a
 evalB (BaryVar v) = v
 evalB (BaryInt i) = i
 evalB (Barylam f) = \x -> evalB (f (BaryVar x))
---evalB (BaryBruijn (C1 a _)) = a
+evalB (BaryBruijn (C1 a _)) = a
 
 
 test :: (Lam f, Val (f '[])) => f '[] Int
@@ -66,7 +66,7 @@ test = id `app` (const `app` fortytwo `app` seven)
 t0 :: Baryon '[] Int
 t0 = test
 
-{-
+
 -- derivation of the abstract machine
 
 eval' :: CONT s a k -> Baryon s a -> k
@@ -82,7 +82,7 @@ eval' (C1 a c) (Barylam f) = exec c (evalB (f (BaryVar a))) -- this is a gamble 
 {- can we use (DEM) ? -}
 eval' c (Barylam f) = exec c (\a -> evalB (f (BaryVar a)))
 {- eta -}
-eval' c (Barylam f) = exec c (evalB . f . BaryVar)
+-- OLD DEF eval' c (Barylam f) = exec c (evalB . f . BaryVar)
 
 
 
@@ -99,9 +99,10 @@ eval' c (BaryInt i) = exec c i
 {- ^^ expand evalB -}
 eval' c e = exec c (eval e)  -- (OWK)
 
+
 data CONT :: [*] -> * -> * -> *  where
   C0 :: Baryon s (a -> b) -> CONT s b k -> CONT s a k
-  C1 :: a -> CONT s b k -> CONT (a ': s) (a -> b) k
+  C1 :: a -> CONT s b k -> CONT s (a -> b) k
   CHALT :: CONT '[] a a
 
 exec :: CONT s a k -> a -> k
@@ -118,4 +119,4 @@ exec (C0 f c) a = exec (C1 a c) (eval f)
 exec (C0 f c) a = exec c (eval f a)
 exec CHALT a = a
 
--}
+
