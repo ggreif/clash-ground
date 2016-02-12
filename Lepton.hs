@@ -4,6 +4,7 @@ module Lepton where
 
 import CLaSH.Prelude
 import GHC.Exts
+import Debug.Trace (traceShow)
 
 class Lam f where
   lam :: ((forall s . f s a) -> f (a ': s) b) -> f s (a -> b)
@@ -64,10 +65,12 @@ t0 = test
 
 eval' :: CONT s a k -> Baryon s a -> k
 
-eval' c'@(C1 a c) (Barylam f) = eval' (CENTER c) (f (BaryBruijn c'))
+eval' c (BaryBruijn c') | traceShow (show c, show c') False = undefined
+
+eval' c'@(C1 _ c) (Barylam f) = eval' (CENTER c) (f (BaryBruijn c'))
   --where exec (CENTER c) b = exec c b
 {- introduce CENTER for entering deeper scope -}
-eval' c'@(C1 a c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capture the stack, later just the stack pointer!
+eval' c'@(C1 _ c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capture the stack, later just the stack pointer!
 
 
 eval' (C1 a c) (Barylam f) = exec c (evalB (f (BaryVar a))) -- this is a gamble on the form of the control stack. Does it always hold?
@@ -97,6 +100,12 @@ data CONT :: [*] -> * -> * -> *  where
   C1 :: a -> !(CONT s b k) -> CONT s (a -> b) k
   CENTER :: !(CONT s b k) -> CONT (a ': s) b k
   CHALT :: CONT '[] a a
+
+instance Show (CONT s a k) where
+  show CHALT = ""
+  show (C0 _ c) = '0' : show c
+  show (C1 _ c) = '1' : show c
+  show (CENTER c) = '^' : show c
 
 exec :: CONT s a k -> a -> k
 
