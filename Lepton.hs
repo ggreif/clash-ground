@@ -93,9 +93,9 @@ eval' c e = exec c (eval e)  -- (OWK)
 
 
 data CONT :: [*] -> * -> * -> *  where
-  C0 :: Baryon s (a -> b) -> CONT s b k -> CONT s a k
-  C1 :: a -> CONT s b k -> CONT s (a -> b) k
-  CENTER :: CONT s b k -> CONT (a ': s) b k
+  C0 :: Baryon s (a -> b) -> !(CONT s b k) -> CONT s a k
+  C1 :: a -> !(CONT s b k) -> CONT s (a -> b) k
+  CENTER :: !(CONT s b k) -> CONT (a ': s) b k
   CHALT :: CONT '[] a a
 
 exec :: CONT s a k -> a -> k
