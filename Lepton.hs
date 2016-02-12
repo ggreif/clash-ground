@@ -1,10 +1,10 @@
-{-# LANGUAGE GADTs, RankNTypes #-}
+{-# LANGUAGE GADTs, RankNTypes, ImpredicativeTypes #-}
 
 module Lepton where
 
 import CLaSH.Prelude
 import GHC.Exts
-
+--import Unsafe.Coerce (unsafeCoerce)
 
 class Lam f where
 {-
@@ -14,7 +14,7 @@ class Lam f where
   type Grow f c a = ()
 -}
   --lam :: c => (Grow f c a => f a -> f b) -> f (a -> b)
-  lam :: (f (a ': s) a -> f s' b) -> f s (a -> b)
+  lam :: ((forall s . f s a) -> f (a ': s) b) -> f s (a -> b)
   app :: f s (a -> b) -> f s a -> f s b
 
 class Val f where
@@ -24,11 +24,11 @@ class Eval f where
   eval :: f a -> a
 
 data Baryon s a where
-  Barylam :: (Baryon (a ': s) a -> Baryon s' b) -> Baryon s (a -> b)
+  Barylam :: ((forall s . Baryon s a) -> Baryon (a ': s) b) -> Baryon s (a -> b)
   Baryapp :: Baryon s (a -> b) -> Baryon s a -> Baryon s b
   BaryInt :: Int -> Baryon s Int
   BaryVar :: a -> Baryon s a
-  BaryBruijn :: CONT (a ': s) (a -> b) k -> Baryon s a
+  --BaryBruijn :: CONT (s') (a -> b) k -> Baryon s a
 
 instance Lam Baryon where
   lam = Barylam
@@ -53,8 +53,9 @@ evalB :: Baryon s a -> a
 evalB (f `Baryapp` a) = evalB f $ evalB a
 evalB (BaryVar v) = v
 evalB (BaryInt i) = i
-evalB (Barylam f) = evalB . f . BaryVar
-evalB (BaryBruijn (C1 a _)) = a
+--evalB (Barylam f) = evalB . f . unsafeCoerce BaryVar
+evalB (Barylam f) = \x -> evalB (f (BaryVar x))
+--evalB (BaryBruijn (C1 a _)) = a
 
 
 test :: (Lam f, Val (f '[])) => f '[] Int
@@ -67,6 +68,7 @@ test = id `app` (const `app` fortytwo `app` seven)
 t0 :: Baryon '[] Int
 t0 = test
 
+{-
 -- derivation of the abstract machine
 
 eval' :: CONT s a k -> Baryon s a -> k
@@ -117,3 +119,5 @@ exec (C0 f c) a = exec (C1 a c) (eval f)
 {- help me Obi-Wan! (create C, amend exec) -}
 exec (C0 f c) a = exec c (eval f a)
 exec CHALT a = a
+
+-}
