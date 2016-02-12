@@ -65,7 +65,6 @@ t0 = test
 
 eval' :: CONT s a k -> Baryon s a -> k
 
-eval' c (BaryBruijn c') | traceShow (show c, show c') False = undefined
 
 eval' c'@(C1 _ c) (Barylam f) = eval' (CENTER c) (f (BaryBruijn c'))
   --where exec (CENTER c) b = exec c b
@@ -92,6 +91,7 @@ eval' c (f `Baryapp` a) = exec c (evalB f $ evalB a)
 eval' c (BaryVar v) = exec c v
 eval' c (BaryInt i) = exec c i
 {- ^^ expand evalB -}
+eval' c (BaryBruijn c') | traceShow (show c, show c') False = undefined
 eval' c e = exec c (eval e)  -- (OWK)
 
 
