@@ -1,13 +1,21 @@
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GADTs, RankNTypes #-}
 
 module Lepton where
 
 import CLaSH.Prelude
+import GHC.Exts
 
 
 class Lam f where
-  lam :: (f a -> f b) -> f (a -> b)
-  app :: f (a -> b) -> f a -> f b
+{-
+  type Support f :: Constraint
+  type Support f = ()
+  type Grow f (c :: Constraint) (a :: *) :: Constraint
+  type Grow f c a = ()
+-}
+  --lam :: c => (Grow f c a => f a -> f b) -> f (a -> b)
+  lam :: (f (a ': s) a -> f s' b) -> f s (a -> b)
+  app :: f s (a -> b) -> f s a -> f s b
 
 class Val f where
   int :: Int -> f Int
@@ -15,33 +23,33 @@ class Val f where
 class Eval f where
   eval :: f a -> a
 
-data Baryon a where
-  Barylam :: (Baryon a -> Baryon b) -> Baryon (a -> b)
-  Baryapp :: Baryon (a -> b) -> Baryon a -> Baryon b
-  BaryInt :: Int -> Baryon Int
-  BaryVar :: a -> Baryon a
-  BaryBruijn :: CONT (a ': s) (a -> b) k -> Baryon a
+data Baryon s a where
+  Barylam :: (Baryon (a ': s) a -> Baryon s' b) -> Baryon s (a -> b)
+  Baryapp :: Baryon s (a -> b) -> Baryon s a -> Baryon s b
+  BaryInt :: Int -> Baryon s Int
+  BaryVar :: a -> Baryon s a
+  BaryBruijn :: CONT (a ': s) (a -> b) k -> Baryon s a
 
 instance Lam Baryon where
   lam = Barylam
   app = Baryapp
 
-instance Val Baryon where
+instance Val (Baryon s) where
   int = BaryInt
 
-instance Eval Baryon where
+instance Eval (Baryon s) where
   eval = evalB
 
-instance Functor Baryon where
+instance Functor (Baryon s) where
   fmap f = (f <$>)
 
-instance Applicative Baryon where
+instance Applicative (Baryon s) where
   pure = BaryVar
   (<*>) = app
 
 -- Here is our standard evaluator:
 --
-evalB :: Baryon a -> a
+evalB :: Baryon s a -> a
 evalB (f `Baryapp` a) = evalB f $ evalB a
 evalB (BaryVar v) = v
 evalB (BaryInt i) = i
@@ -49,19 +57,19 @@ evalB (Barylam f) = evalB . f . BaryVar
 evalB (BaryBruijn (C1 a _)) = a
 
 
-test :: (Lam f, Val f) => f Int
+test :: (Lam f, Val (f '[])) => f '[] Int
 test = id `app` (const `app` fortytwo `app` seven)
   where id = lam (\x->x)
         const = lam (\x->lam(\_->x))
         fortytwo = int 42
         seven = int 7
 
-t0 :: Baryon Int
+t0 :: Baryon '[] Int
 t0 = test
 
 -- derivation of the abstract machine
 
-eval' :: CONT s a k -> Baryon a -> k
+eval' :: CONT s a k -> Baryon s a -> k
 
 
 
@@ -92,7 +100,7 @@ eval' c (BaryInt i) = exec c i
 eval' c e = exec c (eval e)  -- (OWK)
 
 data CONT :: [*] -> * -> * -> *  where
-  C0 :: Baryon (a -> b) -> CONT s b k -> CONT s a k
+  C0 :: Baryon s (a -> b) -> CONT s b k -> CONT s a k
   C1 :: a -> CONT s b k -> CONT (a ': s) (a -> b) k
   CHALT :: CONT '[] a a
 
