@@ -6,13 +6,6 @@ import CLaSH.Prelude
 import GHC.Exts
 
 class Lam f where
-{-
-  type Support f :: Constraint
-  type Support f = ()
-  type Grow f (c :: Constraint) (a :: *) :: Constraint
-  type Grow f c a = ()
--}
-  --lam :: c => (Grow f c a => f a -> f b) -> f (a -> b)
   lam :: ((forall s . f s a) -> f (a ': s) b) -> f s (a -> b)
   app :: f s (a -> b) -> f s a -> f s b
 
@@ -71,8 +64,9 @@ t0 = test
 
 eval' :: CONT s a k -> Baryon s a -> k
 
-
-
+eval' c'@(C1 a c) (Barylam f) = eval' (CENTER c) (f (BaryBruijn c'))
+  --where exec (CENTER c) b = exec c b
+{- introduce CENTER for entering deeper scope -}
 eval' c'@(C1 a c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capture the stack, later just the stack pointer!
 
 
@@ -101,6 +95,7 @@ eval' c e = exec c (eval e)  -- (OWK)
 data CONT :: [*] -> * -> * -> *  where
   C0 :: Baryon s (a -> b) -> CONT s b k -> CONT s a k
   C1 :: a -> CONT s b k -> CONT s (a -> b) k
+  CENTER :: CONT s b k -> CONT (a ': s) b k
   CHALT :: CONT '[] a a
 
 exec :: CONT s a k -> a -> k
@@ -116,5 +111,7 @@ exec (C0 f c) a = exec (C1 a c) (eval f)
 {- help me Obi-Wan! (create C, amend exec) -}
 exec (C0 f c) a = exec c (eval f a)
 exec CHALT a = a
+
+exec (CENTER c) b = exec c b
 
 
