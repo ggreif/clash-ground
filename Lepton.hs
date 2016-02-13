@@ -99,7 +99,7 @@ eval' c e = exec c (eval e)  -- (OWK)
 type Every = forall a . a
 
 revGrab :: CONT s' a' k' -> CONT s a k -> RevGrab s' (Rev '[] s)
-revGrab (C1 a CHALT) (CENTER CHALT) = a
+revGrab (C1 a CHALT) (CENTER CHALT) = undefined -- a
 
 type family RevGrab (shallow :: [*]) (rdeep :: [*]) :: * where
   RevGrab '[] (a ': as) = a
@@ -108,6 +108,14 @@ type family RevGrab (shallow :: [*]) (rdeep :: [*]) :: * where
 type family Rev (acc :: [*]) (rdeep :: [*]) :: [*] where
   Rev acc '[] = acc
   Rev acc (a ': as) = Rev (a ': acc) as
+
+data DB :: [*] -> * where
+  Nil :: DB '[]
+  TCons :: t -> DB ts -> DB (t ': ts)
+
+rev :: DB acc -> CONT s a k -> DB (Rev acc s)
+rev acc CHALT = acc
+--rev acc (CENTER (C1 a c)) = rev (TCons a acc) c
 
 data CONT :: [*] -> * -> * -> *  where
   C0 :: Baryon s (a -> b) -> !(CONT s b k) -> CONT s a k
