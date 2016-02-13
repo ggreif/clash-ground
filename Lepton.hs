@@ -91,7 +91,9 @@ eval' c (f `Baryapp` a) = exec c (evalB f $ evalB a)
 eval' c (BaryVar v) = exec c v
 eval' c (BaryInt i) = exec c i
 {- ^^ expand evalB -}
-eval' c (BaryBruijn c') | traceShow (show c, show c') False = undefined
+eval' c (BaryBruijn c') | traceShow (show c, show c') True = exec c (grab c' c)
+  where grab :: CONT s' (a -> b) k' -> CONT s a k -> a
+        grab (C1 a _) _ = a
 eval' c e = exec c (eval e)  -- (OWK)
 
 
