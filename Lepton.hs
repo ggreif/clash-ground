@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, RankNTypes #-}
+{-# LANGUAGE GADTs, RankNTypes, UndecidableInstances #-}
 
 module Lepton where
 
@@ -91,11 +91,23 @@ eval' c (f `Baryapp` a) = exec c (evalB f $ evalB a)
 eval' c (BaryVar v) = exec c v
 eval' c (BaryInt i) = exec c i
 {- ^^ expand evalB -}
-eval' c (BaryBruijn c') | traceShow (show c, show c') True = exec c (grab c' c)
+eval' c (BaryBruijn c') | traceShow (show c', show c) True = exec c (grab c' c)
   where grab :: CONT s' (a -> b) k' -> CONT s a k -> a
         grab (C1 a _) _ = a
 eval' c e = exec c (eval e)  -- (OWK)
 
+type Every = forall a . a
+
+revGrab :: CONT s' a' k' -> CONT s a k -> RevGrab s' (Rev '[] s)
+revGrab (C1 a CHALT) (CENTER CHALT) = a
+
+type family RevGrab (shallow :: [*]) (rdeep :: [*]) :: * where
+  RevGrab '[] (a ': as) = a
+  RevGrab (s ': ss) (a ': as) = RevGrab ss as
+
+type family Rev (acc :: [*]) (rdeep :: [*]) :: [*] where
+  Rev acc '[] = acc
+  Rev acc (a ': as) = Rev (a ': acc) as
 
 data CONT :: [*] -> * -> * -> *  where
   C0 :: Baryon s (a -> b) -> !(CONT s b k) -> CONT s a k
