@@ -66,7 +66,7 @@ t0 = test
 eval' :: CONT s a k -> Baryon s a -> k
 
 
-eval' c'@(C1 _ c) (Barylam f) = eval' (CENTER c) (f (BaryBruijn c'))
+eval' c'@(C1 _ c) (Barylam f) = eval' (c) (f (BaryBruijn c'))
   --where exec (CENTER c) b = exec c b
 {- introduce CENTER for entering deeper scope -}
 eval' c'@(C1 _ c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capture the stack, later just the stack pointer!
@@ -98,8 +98,8 @@ eval' c e = exec c (eval e)  -- (OWK)
 
 type Every = forall a . a
 
-revGrab :: CONT s' a' k' -> CONT s a k -> RevGrab s' (Rev '[] s)
-revGrab (C1 a CHALT) (CENTER CHALT) = undefined -- a
+--revGrab :: CONT s' a' k' -> CONT s a k -> RevGrab s' (Rev '[] s)
+--revGrab (C1 a CHALT) (CENTER CHALT) = undefined -- a
 
 type family RevGrab (shallow :: [*]) (rdeep :: [*]) :: * where
   RevGrab '[] (a ': as) = a
@@ -115,11 +115,11 @@ data DB :: [*] -> * where
 
 rev :: DB acc -> CONT s a k -> DB (Rev acc s)
 rev acc CHALT = acc
---rev acc (CENTER (C1 a c)) = rev (TCons a acc) c
+--rev acc (C1 a (CENTER c)) = rev (TCons a acc) c
 
 data CONT :: [*] -> * -> * -> *  where
   C0 :: Baryon s (a -> b) -> !(CONT s b k) -> CONT s a k
-  C1 :: a -> !(CONT s b k) -> CONT s (a -> b) k
+  C1 :: a -> !(CONT (a ': s) b k) -> CONT s (a -> b) k
   CENTER :: !(CONT s b k) -> CONT (a ': s) b k
   CHALT :: CONT '[] a a
 
@@ -135,9 +135,9 @@ exec :: CONT s a k -> a -> k
 exec (C1 a c) f = exec c (f a) -- (DEM)
 
 
-exec (C0 f c) a = eval' (C1 a c) f
+exec (C0 f c) a = eval' (C1 a (CENTER c)) f
 {- Obi-Wan helps -}
-exec (C0 f c) a = exec (C1 a c) (eval f)
+exec (C0 f c) a = exec (C1 a (CENTER c)) (eval f)
   --where exec (C1 a c) f = exec c (f a) -- see above
 {- help me Obi-Wan! (create C, amend exec) -}
 exec (C0 f c) a = exec c (eval f a)
