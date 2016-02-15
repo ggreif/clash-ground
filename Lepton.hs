@@ -132,6 +132,11 @@ instance '[b, a] `Suffixed` '[a] where
 instance (b ': deep `Suffixed` shallow) => (b ': a ': deep) `Suffixed` shallow where
   grab (CENTER _ c) = grab c
 
+instance (b ': a ': deep `Suffixed` shallow) => ((a -> b) ': deep) `Suffixed` shallow where
+  grab (C1 c) = grab c
+
+--instance (b ': a ': deep `Suffixed` shallow) => (b ': deep) `Suffixed` shallow where
+
 
 data CONT :: [*] -> * -> *  where
   C0 :: Baryon ((a -> b) ': s) -> !(CONT (b ': s) k) -> CONT (a ': s) k
