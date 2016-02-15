@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, RankNTypes, UndecidableInstances #-}
+{-# LANGUAGE GADTs, RankNTypes, FlexibleInstances, UndecidableInstances, MultiParamTypeClasses #-}
 
 module Lepton where
 
@@ -7,60 +7,63 @@ import GHC.Exts
 import Debug.Trace (traceShow)
 
 class Lam f where
-  lam :: ((forall s . f s a) -> f (a ': s) b) -> f s (a -> b)
-  app :: f s (a -> b) -> f s a -> f s b
+  lam :: ((forall s . f (a ': s)) -> f (b ': a ': s)) -> f ((a -> b) ': s)
+  app :: f ((a -> b) ': s) -> f (a ': s) -> f (b ': s)
 
 class Val f where
-  int :: Int -> f Int
+  int :: Int -> f (Int ': s)
 
 class Eval f where
-  eval :: f a -> a
+  eval :: f (a ': s) -> a
 
-data Baryon s a where
-  Barylam :: ((forall s . Baryon s a) -> Baryon (a ': s) b) -> Baryon s (a -> b)
-  Baryapp :: Baryon s (a -> b) -> Baryon s a -> Baryon s b
-  BaryInt :: Int -> Baryon s Int
-  BaryVar :: a -> Baryon s a
-  BaryBruijn :: CONT s' (a -> b) k -> Baryon s a
+data Baryon s where
+  Barylam :: ((forall s . Baryon (a ': s)) -> Baryon (b ': a ': s)) -> Baryon ((a -> b) ': s)
+  Baryapp :: Baryon ((a -> b) ': s) -> Baryon (a ': s) -> Baryon (b ': s)
+  BaryInt :: Int -> Baryon (Int ': s)
+  BaryVar :: a -> Baryon (a ': s)
+  BaryBruijn :: CONT ((a -> b) ': s') k -> Baryon (a ': s)
 
 instance Lam Baryon where
   lam = Barylam
   app = Baryapp
 
-instance Val (Baryon s) where
+instance Val Baryon where
   int = BaryInt
 
-instance Eval (Baryon s) where
+instance Eval Baryon where
   eval = evalB
 
+{-
 instance Functor (Baryon s) where
   fmap f = (f <$>)
 
 instance Applicative (Baryon s) where
   pure = BaryVar
   (<*>) = app
+-}
 
 -- Here is our standard evaluator:
 --
-evalB :: Baryon s a -> a
+evalB :: Baryon (a ': s) -> a
 evalB (f `Baryapp` a) = evalB f $ evalB a
 evalB (BaryVar v) = v
 evalB (BaryInt i) = i
 evalB (Barylam f) = \x -> evalB (f (BaryVar x))
-evalB (BaryBruijn (C1 a _)) = a
+--evalB (BaryBruijn (C1 a _)) = a
+evalB (BaryBruijn (C1 (CENTER a _))) = a
 
 
-test :: (Lam f, Val (f '[])) => f '[] Int
+test :: (Lam f, Val f) => f '[Int]
 test = id `app` (const `app` fortytwo `app` seven)
   where id = lam (\x->x)
         const = lam (\x->lam(\_->x))
         fortytwo = int 42
         seven = int 7
 
-t0 :: Baryon '[] Int
+t0 :: Baryon '[Int]
 t0 = test
 
-
+{-
 -- derivation of the abstract machine
 
 eval' :: CONT s a k -> Baryon s a -> k
@@ -97,6 +100,7 @@ eval' c (BaryBruijn c') | traceShow (show c', show c) True = exec c (grab c' c)
 eval' c e = exec c (eval e)  -- (OWK)
 
 type Every = forall a . a
+-}
 
 --revGrab :: CONT s' a' k' -> CONT s a k -> RevGrab s' (Rev '[] s)
 --revGrab (C1 a CHALT) (CENTER CHALT) = undefined -- a
@@ -106,28 +110,43 @@ type family RevGrab (shallow :: [*]) (rdeep :: [*]) :: * where
   RevGrab (s ': ss) (a ': as) = RevGrab ss as
 
 type family Rev (acc :: [*]) (rdeep :: [*]) :: [*] where
-  Rev acc '[] = acc
+  Rev acc '[x] = acc
+  --Rev acc ((a -> b) ': as) = Rev (b ': a ': acc) as
   Rev acc (a ': as) = Rev (a ': acc) as
 
 data DB :: [*] -> * where
   Nil :: DB '[]
   TCons :: t -> DB ts -> DB (t ': ts)
 
-rev :: DB acc -> CONT s a k -> DB (Rev acc s)
+rev :: DB acc -> CONT s k -> DB (Rev acc s)
 rev acc CHALT = acc
---rev acc (C1 a (CENTER c)) = rev (TCons a acc) c
+--rev acc (C1 a (CENTER CHALT)) = rev (TCons a acc) CHALT -- TODO!
 
-data CONT :: [*] -> * -> * -> *  where
-  C0 :: Baryon s (a -> b) -> !(CONT s b k) -> CONT s a k
-  C1 :: a -> !(CONT (a ': s) b k) -> CONT s (a -> b) k
-  CENTER :: !(CONT s b k) -> CONT (a ': s) b k
-  CHALT :: CONT '[] a a
+infix 4 `Suffixed`
+class deep `Suffixed` shallow where
+  grab :: (shallow ~ (a ': rest)) => CONT deep k -> CONT shallow k -> a
 
-instance Show (CONT s a k) where
+instance '[b, a] `Suffixed` '[a] where
+  grab (CENTER a CHALT) (C1 _) = a
+
+instance (b ': deep `Suffixed` shallow) => (b ': a ': deep) `Suffixed` shallow where
+  grab (CENTER _ c) = grab c
+
+
+data CONT :: [*] -> * -> *  where
+  C0 :: Baryon ((a -> b) ': s) -> !(CONT (b ': s) k) -> CONT (a ': s) k
+  --C1 :: a -> !(CONT (b ': a ': s) k) -> CONT ((a -> b) ': s) k
+  C1 :: !(CONT (b ': a ': s) k) -> CONT ((a -> b) ': s) k
+  --CENTER :: !(CONT (b ': s) k) -> CONT (b ': a ': s) k
+  CENTER :: a -> !(CONT (b ': s) k) -> CONT (b ': a ': s) k
+  CHALT :: CONT '[a] a
+
+instance Show (CONT (a ': s) k) where
   show CHALT = ""
   show (C0 _ c) = '0' : show c
-  show (C1 _ c) = '1' : show c
-  show (CENTER c) = '^' : show c
+  show (C1 c) = '1' : show c
+  show (CENTER a c) = '^' : show c
+{-
 
 exec :: CONT s a k -> a -> k
 
@@ -145,4 +164,4 @@ exec CHALT a = a
 
 exec (CENTER c) b = exec c b
 
-
+-}
