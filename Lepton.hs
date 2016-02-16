@@ -128,19 +128,11 @@ infix 4 `Suffixed`
 class deep `Suffixed` shallow where
   grab :: (shallow ~ (a ': rest)) => CONT deep k -> CONT shallow k -> a
 
-instance '[a] `Suffixed` '[a] where
-  --grab (CENTER a CHALT) (C1 _) = a
+instance '[b, a] `Suffixed` '[a] where
+  grab (CENTER a CHALT) (C1 _) = a
 
-instance (d ': deep `Suffixed` shallow) => (a ': d ': deep) `Suffixed` shallow
-
-
---instance (b ': d ': deep `Suffixed` shallow) => (b ': a ': d ': deep) `Suffixed` shallow where
---  grab (CENTER _ c) = grab c
-
---instance (b ': a ': deep `Suffixed` shallow) => ((a -> b) ': deep) `Suffixed` shallow where
---  grab (C1 c) = grab c
-
---instance (b ': a ': deep `Suffixed` shallow) => (b ': deep) `Suffixed` shallow where
+instance (b ': d ': deep `Suffixed` shallow) => (b ': a ': d ': deep) `Suffixed` shallow where
+  grab (CENTER _ c) = grab c
 
 
 data CONT :: [*] -> * -> *  where
