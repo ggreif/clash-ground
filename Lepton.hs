@@ -7,7 +7,8 @@ import GHC.Exts
 import Debug.Trace (traceShow)
 
 class Lam f where
-  lam :: ((forall i . (b ': a ': s `Suffixed` a ': i) => f (a ': i)) -> f (b ': a ': s)) -> f ((a -> b) ': s)
+  lam :: ((forall i . (a ': i `Suffixed` a ': s) => f (a ': i)) -> f (b ': a ': s)) -> f ((a -> b) ': s)
+  --lam :: ((forall i . (b ': a ': s `Suffixed` a ': i) => f (a ': i)) -> f (b ': a ': s)) -> f ((a -> b) ': s)
   app :: f ((a -> b) ': s) -> f (a ': s) -> f (b ': s)
 
 class Val f where
@@ -17,7 +18,8 @@ class Eval f where
   eval :: f (a ': s) -> a
 
 data Baryon s where
-  Barylam :: ((forall i . (b ': a ': s `Suffixed` a ': i) => Baryon (a ': i)) -> Baryon (b ': a ': s)) -> Baryon ((a -> b) ': s)
+  Barylam :: ((forall i . (a ': i `Suffixed` a ': s) => Baryon (a ': i)) -> Baryon (b ': a ': s)) -> Baryon ((a -> b) ': s)
+  --Barylam :: ((forall i . (b ': a ': s `Suffixed` a ': i) => Baryon (a ': i)) -> Baryon (b ': a ': s)) -> Baryon ((a -> b) ': s)
   Baryapp :: Baryon ((a -> b) ': s) -> Baryon (a ': s) -> Baryon (b ': s)
   BaryInt :: Int -> Baryon (Int ': s)
   BaryVar :: a -> Baryon (a ': s)
@@ -126,11 +128,14 @@ infix 4 `Suffixed`
 class deep `Suffixed` shallow where
   grab :: (shallow ~ (a ': rest)) => CONT deep k -> CONT shallow k -> a
 
-instance '[b, a] `Suffixed` '[a] where
-  grab (CENTER a CHALT) (C1 _) = a
+instance '[a] `Suffixed` '[a] where
+  --grab (CENTER a CHALT) (C1 _) = a
 
-instance (b ': d ': deep `Suffixed` shallow) => (b ': a ': d ': deep) `Suffixed` shallow where
-  grab (CENTER _ c) = grab c
+instance (d ': deep `Suffixed` shallow) => (a ': d ': deep) `Suffixed` shallow
+
+
+--instance (b ': d ': deep `Suffixed` shallow) => (b ': a ': d ': deep) `Suffixed` shallow where
+--  grab (CENTER _ c) = grab c
 
 --instance (b ': a ': deep `Suffixed` shallow) => ((a -> b) ': deep) `Suffixed` shallow where
 --  grab (C1 c) = grab c
