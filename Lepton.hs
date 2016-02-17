@@ -7,7 +7,7 @@ import GHC.Exts
 import Debug.Trace (traceShow)
 
 class Lam f where
-  lam :: ((forall i . (i `Suffixed` a ': s) => f (a ': i)) -> f (b ': a ': s)) -> f ((a -> b) ': s)
+  lam :: ((forall i . (i `Suffixed` a ': s, DeBruijnIndex i (a ': s)) => f (a ': i)) -> f (b ': a ': s)) -> f ((a -> b) ': s)
   app :: f ((a -> b) ': s) -> f (a ': s) -> f (b ': s)
 
 class Val f where
@@ -17,7 +17,7 @@ class Eval f where
   eval :: f (a ': s) -> a
 
 data Baryon s where
-  Barylam :: ((forall i . (i `Suffixed` a ': s) => Baryon (a ': i)) -> Baryon (b ': a ': s)) -> Baryon ((a -> b) ': s)
+  Barylam :: ((forall i . (i `Suffixed` a ': s, DeBruijnIndex i (a ': s)) => Baryon (a ': i)) -> Baryon (b ': a ': s)) -> Baryon ((a -> b) ': s)
   Baryapp :: Baryon ((a -> b) ': s) -> Baryon (a ': s) -> Baryon (b ': s)
   BaryInt :: Int -> Baryon (Int ': s)
   BaryVar :: a -> Baryon (a ': s)
@@ -141,6 +141,17 @@ instance '[a] `Suffixed` '[a] where
 -- deep deepens, shallow remains
 instance (Reverse (a ': d ': deep) `EqZip` Reverse shallow, d ': deep `Suffixed` shallow) => (a ': d ': deep) `Suffixed` shallow where
   --grab (CENTER _ c) = grab c
+
+-- AVENUE B
+
+type family DBI (dacc :: [*]) (sacc :: [*]) (deep :: [*]) (shallow :: [*]) :: Constraint where
+  DBI dacc sacc (d ': deep) (s ': shallow) = DBI (d ': dacc) (s ': sacc) deep shallow
+  DBI (d ': dacc) (s ': sacc) deep '[] = (d ~ s, DBI dacc sacc deep '[])
+  DBI '[] '[] deep '[] = Consume deep
+
+type DeBruijnIndex deep shallow = DBI '[] '[] deep shallow
+class Consume (deep :: [*])
+
 
 
 data CONT :: [*] -> * -> *  where
