@@ -110,30 +110,36 @@ type family RevGrab (shallow :: [*]) (rdeep :: [*]) :: * where
   RevGrab (s ': ss) (a ': as) = RevGrab ss as
 
 type family Rev (acc :: [*]) (rdeep :: [*]) :: [*] where
-  Rev acc '[x] = acc
+  Rev acc '[] = acc
   --Rev acc ((a -> b) ': as) = Rev (b ': a ': acc) as
   Rev acc (a ': as) = Rev (a ': acc) as
+
+type Reverse l = Rev '[] l
 
 data DB :: [*] -> * where
   Nil :: DB '[]
   TCons :: t -> DB ts -> DB (t ': ts)
 
-rev :: DB acc -> CONT s k -> DB (Rev acc s)
-rev acc CHALT = acc
+--rev :: DB acc -> CONT s k -> DB (Rev acc s)
+--rev acc CHALT = acc
 --rev acc (C1 a (CENTER CHALT)) = rev (TCons a acc) CHALT -- TODO!
 
+type family EqZip (deep :: [*]) (shallow :: [*]) :: Constraint where
+  EqZip (a ': peel) '[a] = ()
+  EqZip (a ': as) (a ': bs) = EqZip as bs
+
 infix 4 `Suffixed`
-class deep `Suffixed` shallow where
+class (Reverse deep `EqZip` Reverse shallow) => deep `Suffixed` shallow where
   grab :: (shallow ~ (a ': rest)) => CONT deep k -> CONT shallow k -> a
 
 instance '[a] `Suffixed` '[a] where
   --grab (CENTER a CHALT) (C1 _) = a
 
 -- both grow the same way
-instance (d ': deep `Suffixed` shallow) => (a ': d ': deep) `Suffixed` (a ': shallow) where
+--instance (d ': deep `Suffixed` shallow) => (a ': d ': deep) `Suffixed` (a ': shallow) where
 
 -- deep deepens, shallow remains
-instance (d ': deep `Suffixed` shallow) => (a ': d ': deep) `Suffixed` shallow where
+instance (Reverse (a ': d ': deep) `EqZip` Reverse shallow, d ': deep `Suffixed` shallow) => (a ': d ': deep) `Suffixed` shallow where
   --grab (CENTER _ c) = grab c
 
 
