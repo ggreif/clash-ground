@@ -143,6 +143,7 @@ instance (Reverse (a ': d ': deep) `EqZip` Reverse shallow, d ': deep `Suffixed`
   --grab (CENTER _ c) = grab c
 
 -- AVENUE B
+-- DeBruijnIndex [f, e, d, c, b, a] [c, b, a] = Consume [f, e, d, c (, ...)] 
 
 type family DBI (dacc :: [*]) (sacc :: [*]) (deep :: [*]) (shallow :: [*]) :: Constraint where
   DBI dacc sacc (d ': deep) (s ': shallow) = DBI (d ': dacc) (s ': sacc) deep shallow
