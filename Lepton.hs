@@ -145,17 +145,17 @@ instance (Reverse (a ': d ': deep) `EqZip` Reverse shallow, d ': deep `Suffixed`
 -- AVENUE B
 -- DeBruijnIndex [f, e, d, c, b, a] [c, b, a] = Consume [f, e, d, c (, ...)] 
 -- :kind! DeBruijnIndex '[Float, Either Int Int, Double, Char, Bool, Int] '[Char, Bool, Int]
-type family DBI (dacc :: [*]) (sacc :: [*]) (deep :: [*]) (shallow :: [*]) :: Constraint where
-  DBI dacc sacc (d ': deep) (s ': shallow) = DBI (d ': dacc) (s ': sacc) deep shallow
-  DBI dacc sacc (d ': deep) '[] = DBI (d ': dacc) sacc deep '[]
-  DBI (d ': dacc) '[s] '[] '[] = (d ~ s, Consume (d ': dacc))
-  DBI (d ': dacc) (s ': sacc) '[] '[] = (d ~ s, DBI dacc sacc '[] '[])
+type family DBI (odeep :: [*]) (dacc :: [*]) (sacc :: [*]) (deep :: [*]) (shallow :: [*]) :: Constraint where
+  DBI orig dacc sacc (d ': deep) (s ': shallow) = DBI orig (d ': dacc) (s ': sacc) deep shallow
+  DBI orig dacc sacc (d ': deep) '[] = DBI orig (d ': dacc) sacc deep '[]
+  DBI orig (d ': dacc) '[s] '[] '[] = (d ~ s, Consume (d ': dacc) orig)
+  DBI orig (d ': dacc) (s ': sacc) '[] '[] = (d ~ s, DBI orig dacc sacc '[] '[])
 
-type DeBruijnIndex deep shallow = DBI '[] '[] deep shallow
+type DeBruijnIndex deep shallow = DBI deep '[] '[] deep shallow
 
-class Consume (deep :: [*])
-instance Consume '[Int]
-instance Consume '[Int, Int]
+class Consume (rev :: [*]) (deep :: [*])
+instance Consume '[Int] '[Int]
+instance Consume '[Int, Int] '[Int, Int]
 
 
 data CONT :: [*] -> * -> *  where
