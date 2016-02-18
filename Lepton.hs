@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, RankNTypes, FlexibleInstances, UndecidableInstances, MultiParamTypeClasses, FunctionalDependencies #-}
+{-# LANGUAGE GADTs, RankNTypes, FlexibleInstances, UndecidableInstances, MultiParamTypeClasses #-}
 
 module Lepton where
 
@@ -63,10 +63,9 @@ test = id `app` (const `app` fortytwo `app` seven)
 t0 :: Baryon '[Int]
 t0 = test
 
-test1 = lam (\x0 -> lam (\_ -> lam (\x -> x))) `app` int 2 `app` int 1 `app` int 0
+test1 = (lam (\x0 -> lam (\x1 -> x1)) `app` int 2) `app` int 1
 
---t1 :: Baryon '[Int] -- FAILS!?
---t1 :: Baryon (Int ': s)
+t1 :: Baryon '[Int]
 t1 = test1
 
 test2 = lam (\x0 -> lam (\_ -> lam (\x -> x0))) `app` int 2 `app` int 1 `app` int 0
@@ -139,14 +138,15 @@ type family DBI (odeep :: [*]) (dacc :: [*]) (sacc :: [*]) (deep :: [*]) (shallo
 
 type DeBruijnIndex deep shallow = DBI deep '[] '[] deep shallow
 
-class Consume d (rev :: [*]) (deep :: [*]) | deep -> rev where
-  peel :: DB deep -> d
+class Consume d (rev :: [*]) (deep :: [*]) where
+  peel :: DB rev -> DB deep -> d
 
-instance Consume a '[] '[a] where
-  peel (TCons a _) = a
+instance Consume a '[] (a ': deeps) where
+  peel _ (TCons a _) = a
 
-instance Consume a ds (e ': deeps) => Consume a (d ': ds) (d ': e ': deeps) where
-  peel (TCons _ rest) = peel rest
+instance Consume a ds (deeps) => Consume a (d ': ds) (d ': deeps) where
+--instance Consume a ds (e ': deeps) => Consume a (d ': ds) (d ': e ': deeps) where
+  peel (TCons _ rest0) (TCons _ rest) = peel rest0 rest
 
 
 data CONT :: [*] -> * -> *  where
