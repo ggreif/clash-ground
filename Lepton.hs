@@ -7,7 +7,7 @@ import GHC.Exts
 import Debug.Trace (traceShow)
 
 class Lam f where
-  lam :: ((forall i . (i `Suffixed` a ': s, DeBruijnIndex i (a ': s)) => f (a ': i)) -> f (b ': a ': s)) -> f ((a -> b) ': s)
+  lam :: ((forall i . (DeBruijnIndex i (a ': s)) => f (a ': i)) -> f (b ': a ': s)) -> f ((a -> b) ': s)
   app :: f ((a -> b) ': s) -> f (a ': s) -> f (b ': s)
 
 class Val f where
@@ -17,7 +17,7 @@ class Eval f where
   eval :: f (a ': s) -> a
 
 data Baryon s where
-  Barylam :: ((forall i . (i `Suffixed` a ': s, DeBruijnIndex i (a ': s)) => Baryon (a ': i)) -> Baryon (b ': a ': s)) -> Baryon ((a -> b) ': s)
+  Barylam :: ((forall i . (DeBruijnIndex i (a ': s)) => Baryon (a ': i)) -> Baryon (b ': a ': s)) -> Baryon ((a -> b) ': s)
   Baryapp :: Baryon ((a -> b) ': s) -> Baryon (a ': s) -> Baryon (b ': s)
   BaryInt :: Int -> Baryon (Int ': s)
   BaryVar :: a -> Baryon (a ': s)
@@ -102,13 +102,6 @@ eval' c e = exec c (eval e)  -- (OWK)
 type Every = forall a . a
 -}
 
---revGrab :: CONT s' a' k' -> CONT s a k -> RevGrab s' (Rev '[] s)
---revGrab (C1 a CHALT) (CENTER CHALT) = undefined -- a
-
-type family RevGrab (shallow :: [*]) (rdeep :: [*]) :: * where
-  RevGrab '[] (a ': as) = a
-  RevGrab (s ': ss) (a ': as) = RevGrab ss as
-
 type family Rev (acc :: [*]) (rdeep :: [*]) :: [*] where
   Rev acc '[] = acc
   Rev acc (a ': as) = Rev (a ': acc) as
@@ -119,27 +112,10 @@ data DB :: [*] -> * where
   Nil :: DB '[]
   TCons :: t -> DB ts -> DB (t ': ts)
 
---rev :: DB acc -> CONT s k -> DB (Rev acc s)
---rev acc CHALT = acc
---rev acc (C1 a (CENTER CHALT)) = rev (TCons a acc) CHALT -- TODO!
-
+-- I might need such a beast later:
 type family EqZip (deep :: [*]) (shallow :: [*]) :: Constraint where
   EqZip (a ': peel) '[a] = ()
   EqZip (a ': as) (a ': bs) = EqZip as bs
-
-infix 4 `Suffixed`
-class (Reverse deep `EqZip` Reverse shallow) => deep `Suffixed` shallow where
-  grab :: (shallow ~ (a ': rest)) => CONT deep k -> CONT shallow k -> a
-
-instance '[a] `Suffixed` '[a] where
-  --grab (CENTER a CHALT) (C1 _) = a
-
--- both grow the same way
---instance (d ': deep `Suffixed` shallow) => (a ': d ': deep) `Suffixed` (a ': shallow) where
-
--- deep deepens, shallow remains
-instance (Reverse (a ': d ': deep) `EqZip` Reverse shallow, d ': deep `Suffixed` shallow) => (a ': d ': deep) `Suffixed` shallow where
-  --grab (CENTER _ c) = grab c
 
 -- AVENUE B
 -- DeBruijnIndex [f, e, d, c, b, a] [c, b, a] = Consume [f, e, d, c (, ...)] 
@@ -154,8 +130,6 @@ type DeBruijnIndex deep shallow = DBI deep '[] '[] deep shallow
 
 class Consume d (rev :: [*]) (deep :: [*]) | deep -> rev where
   peel :: DB deep -> d
---instance Consume Int '[] '[Int]
---instance Consume Int '[Int] '[Int, Int]
 
 instance Consume a '[] '[a] where
   peel (TCons a _) = a
