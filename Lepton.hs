@@ -85,7 +85,12 @@ eval' c'@(C1 c) (Barylam f) | traceShow ("C1bruijn", show c') True = eval' c (f 
 eval' c'@(C1 c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capture the stack, later just the stack pointer!
 
 
---eval' (C1 a c) (Barylam f) = exec c (evalB (f (BaryVar a))) -- this is a gamble on the form of the control stack. Does it always hold?
+--eval' (C1 a c) (Barylam f) = exec c (evalB (f (BaryVar a))) -- this is a gamble on the form of the control stack. Does it always hold? -- NO: CENTER can also be (see immediately below this)
+
+
+eval' c'@(CENTER a c) (Barylam f) | traceShow ("CENTERbruijn", show c') True = eval' c (f (BaryVar a))--- (BaryBruijn (_ c)))
+
+
 
 --eval' c (Barylam f) = exec c (\a -> evalB (f (BaryBruijn 0)))
 {- can we use (DEM) ? -}
