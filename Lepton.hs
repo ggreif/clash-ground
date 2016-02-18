@@ -111,7 +111,6 @@ type family RevGrab (shallow :: [*]) (rdeep :: [*]) :: * where
 
 type family Rev (acc :: [*]) (rdeep :: [*]) :: [*] where
   Rev acc '[] = acc
-  --Rev acc ((a -> b) ': as) = Rev (b ': a ': acc) as
   Rev acc (a ': as) = Rev (a ': acc) as
 
 type Reverse l = Rev '[] l
@@ -148,14 +147,15 @@ instance (Reverse (a ': d ': deep) `EqZip` Reverse shallow, d ': deep `Suffixed`
 type family DBI (odeep :: [*]) (dacc :: [*]) (sacc :: [*]) (deep :: [*]) (shallow :: [*]) :: Constraint where
   DBI orig dacc sacc (d ': deep) (s ': shallow) = DBI orig (d ': dacc) (s ': sacc) deep shallow
   DBI orig dacc sacc (d ': deep) '[] = DBI orig (d ': dacc) sacc deep '[]
-  DBI orig (d ': dacc) '[s] '[] '[] = (d ~ s, Consume (d ': dacc) orig)
+  DBI orig (d ': dacc) '[s] '[] '[] = (d ~ s, Consume d (Reverse (d ': dacc)) orig)
   DBI orig (d ': dacc) (s ': sacc) '[] '[] = (d ~ s, DBI orig dacc sacc '[] '[])
 
 type DeBruijnIndex deep shallow = DBI deep '[] '[] deep shallow
 
-class Consume (rev :: [*]) (deep :: [*])
-instance Consume '[Int] '[Int]
-instance Consume '[Int, Int] '[Int, Int]
+class Consume d (rev :: [*]) (deep :: [*]) where
+  -- pll :: DB deep -> d
+instance Consume Int '[Int] '[Int]
+instance Consume Int '[Int, Int] '[Int, Int]
 
 
 data CONT :: [*] -> * -> *  where
