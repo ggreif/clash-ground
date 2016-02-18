@@ -151,6 +151,13 @@ instance Show (CONT (a ': s) k) where
   show (C0 _ c) = '0' : show c
   show (C1 c) = '1' : show c
   show (CENTER a c) = '^' : show c
+
+extract :: CONT (a ': ctx) k -> DB ctx
+extract CHALT = Lepton.Nil
+extract (C0 _ c) = extract c
+--extract (C1 c) = extract c
+extract (CENTER a c) = TCons a $ extract c
+
 {-
 
 exec :: CONT s a k -> a -> k
