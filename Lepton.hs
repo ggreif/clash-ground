@@ -79,7 +79,7 @@ t2 = test2
 eval' :: CONT (a ': s) k -> Baryon (a ': s) -> k
 
 
-eval' c'@(C1 c) (Barylam f) = eval' c (f (BaryBruijn c'))
+eval' c'@(C1 c) (Barylam f) | traceShow ("C1bruijn", show c') True = eval' c (f (BaryBruijn c'))
   --where exec (CENTER c) b = exec c b
 {- introduce CENTER for entering deeper scope -}
 eval' c'@(C1 c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capture the stack, later just the stack pointer!
@@ -89,7 +89,7 @@ eval' c'@(C1 c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capt
 
 --eval' c (Barylam f) = exec c (\a -> evalB (f (BaryBruijn 0)))
 {- can we use (DEM) ? -}
-eval' c (Barylam f) = exec c (\a -> evalB (f (BaryVar a)))
+eval' c (Barylam f) | traceShow ("VAR", show c) True = exec c (\a -> evalB (f (BaryVar a)))
 
 
 
