@@ -63,6 +63,17 @@ test = id `app` (const `app` fortytwo `app` seven)
 t0 :: Baryon '[Int]
 t0 = test
 
+test1 = lam (\x0 -> lam (\_ -> lam (\x -> x))) `app` int 2 `app` int 1 `app` int 0
+
+--t1 :: Baryon '[Int] -- FAILS!?
+--t1 :: Baryon (Int ': s)
+t1 = test1
+
+test2 = lam (\x0 -> lam (\_ -> lam (\x -> x0))) `app` int 2 `app` int 1 `app` int 0
+
+t2 :: Baryon '[Int]
+t2 = test2
+
 {-
 -- derivation of the abstract machine
 
