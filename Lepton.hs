@@ -73,19 +73,19 @@ test2 = lam (\x0 -> lam (\_ -> lam (\x -> x0))) `app` int 2 `app` int 1 `app` in
 t2 :: Baryon '[Int]
 t2 = test2
 
-{-
+
 -- derivation of the abstract machine
 
-eval' :: CONT s a k -> Baryon s a -> k
+eval' :: CONT (a ': s) k -> Baryon (a ': s) -> k
 
 
-eval' c'@(C1 _ c) (Barylam f) = eval' (c) (f (BaryBruijn c'))
+eval' c'@(C1 c) (Barylam f) = eval' c (f (BaryBruijn c'))
   --where exec (CENTER c) b = exec c b
 {- introduce CENTER for entering deeper scope -}
-eval' c'@(C1 _ c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capture the stack, later just the stack pointer!
+eval' c'@(C1 c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capture the stack, later just the stack pointer!
 
 
-eval' (C1 a c) (Barylam f) = exec c (evalB (f (BaryVar a))) -- this is a gamble on the form of the control stack. Does it always hold?
+--eval' (C1 a c) (Barylam f) = exec c (evalB (f (BaryVar a))) -- this is a gamble on the form of the control stack. Does it always hold?
 
 --eval' c (Barylam f) = exec c (\a -> evalB (f (BaryBruijn 0)))
 {- can we use (DEM) ? -}
@@ -105,12 +105,11 @@ eval' c (BaryVar v) = exec c v
 eval' c (BaryInt i) = exec c i
 {- ^^ expand evalB -}
 eval' c (BaryBruijn c') | traceShow (show c', show c) True = exec c (grab c' c)
-  where grab :: CONT s' (a -> b) k' -> CONT s a k -> a
-        grab (C1 a _) _ = a
+  where grab :: CONT ((a -> b) ': s') k' -> CONT (a ': s) k -> a
+        grab (C1 (CENTER a _)) _ = a
 eval' c e = exec c (eval e)  -- (OWK)
 
-type Every = forall a . a
--}
+
 
 type family Rev (acc :: [*]) (rdeep :: [*]) :: [*] where
   Rev acc '[] = acc
@@ -145,11 +144,10 @@ instance Consume a '[] (a ': deeps) where
   peel _ (TCons a _) = a
 
 instance Consume a ds (deeps) => Consume a (d ': ds) (d ': deeps) where
---instance Consume a ds (e ': deeps) => Consume a (d ': ds) (d ': e ': deeps) where
   peel (TCons _ rest0) (TCons _ rest) = peel rest0 rest
 
 
-data CONT :: [*] -> * -> *  where
+data CONT :: [*] -> * -> * where
   C0 :: Baryon ((a -> b) ': s) -> !(CONT (b ': s) k) -> CONT (a ': s) k
   --C1 :: a -> !(CONT (b ': a ': s) k) -> CONT ((a -> b) ': s) k
   C1 :: !(CONT (b ': a ': s) k) -> CONT ((a -> b) ': s) k
@@ -169,22 +167,21 @@ extract (C0 _ c) = extract c
 --extract (C1 c) = extract c
 extract (CENTER a c) = TCons a $ extract c
 
-{-
-
-exec :: CONT s a k -> a -> k
 
 
-exec (C1 a c) f = exec c (f a) -- (DEM)
+exec :: CONT (a ': s) k -> a -> k
 
 
-exec (C0 f c) a = eval' (C1 a (CENTER c)) f
+exec (C1 (CENTER a c)) f = exec c (f a) -- (DEM)
+
+
+exec (C0 f c) a = eval' (C1 (CENTER a c)) f
 {- Obi-Wan helps -}
-exec (C0 f c) a = exec (C1 a (CENTER c)) (eval f)
+exec (C0 f c) a = exec (C1 (CENTER a c)) (eval f)
   --where exec (C1 a c) f = exec c (f a) -- see above
 {- help me Obi-Wan! (create C, amend exec) -}
 exec (C0 f c) a = exec c (eval f a)
 exec CHALT a = a
 
-exec (CENTER c) b = exec c b
+exec (CENTER _ c) b = exec c b
 
--}
