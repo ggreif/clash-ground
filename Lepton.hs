@@ -88,7 +88,11 @@ eval' c'@(C1 c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capt
 --eval' (C1 a c) (Barylam f) = exec c (evalB (f (BaryVar a))) -- this is a gamble on the form of the control stack. Does it always hold? -- NO: CENTER can also be (see immediately below this)
 
 
-eval' c'@(CENTER a c) (Barylam f) | traceShow ("CENTERbruijn", show c') True = eval' c (f (BaryVar a))--- (BaryBruijn (_ c)))
+eval' c'@(CENTER a c''@(C1 c)) (Barylam f) | traceShow ("CENTERbruijn", show c') True = eval' (cSINK c) (f (BaryBruijn c'')) -- (f (BaryVar a))--- (BaryBruijn (_ c)))
+  where gr :: CONT (a ': here) k -> CONT there k' -> a
+        gr = undefined
+        cSINK :: CONT (b2 ': a3 ': s2) k -> CONT (b2 ': a3 ': a1 ': s2) k
+        cSINK = CDROP
 
 
 
@@ -109,7 +113,7 @@ eval' c (f `Baryapp` a) = exec c (evalB f $ evalB a)
 eval' c (BaryVar v) = exec c v
 eval' c (BaryInt i) = exec c i
 {- ^^ expand evalB -}
-eval' c (BaryBruijn c') | traceShow (show c', show c) True = exec c (grab c' c)
+eval' c (BaryBruijn c') | traceShow ("@@", show c', show c) True = exec c (grab c' c)
   where grab :: CONT ((a -> b) ': s') k' -> CONT (a ': s) k -> a
         grab (C1 (CENTER a _)) _ = a
 eval' c e = exec c (eval e)  -- (OWK)
@@ -158,6 +162,7 @@ data CONT :: [*] -> * -> * where
   C1 :: !(CONT (b ': a ': s) k) -> CONT ((a -> b) ': s) k
   --CENTER :: !(CONT (b ': s) k) -> CONT (b ': a ': s) k
   CENTER :: a -> !(CONT (b ': s) k) -> CONT (b ': a ': s) k
+  CDROP :: !(CONT (b ': a ': s) k) -> CONT (b ': a ': x ': s) k
   CHALT :: CONT '[a] a
 
 instance Show (CONT (a ': s) k) where
@@ -165,6 +170,7 @@ instance Show (CONT (a ': s) k) where
   show (C0 _ c) = '0' : show c
   show (C1 c) = '1' : show c
   show (CENTER a c) = '^' : show c
+  show (CDROP c) = '/' : show c
 
 extract :: CONT (a ': ctx) k -> DB ctx
 extract CHALT = Lepton.Nil
@@ -175,6 +181,8 @@ extract (CENTER a c) = TCons a $ extract c
 
 
 exec :: CONT (a ': s) k -> a -> k
+
+exec (CDROP c) f = exec c f -- (DEM)
 
 
 exec (C1 (CENTER a c)) f = exec c (f a) -- (DEM)
