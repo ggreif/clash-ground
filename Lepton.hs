@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, RankNTypes, FlexibleInstances, UndecidableInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE GADTs, RankNTypes, FlexibleInstances, UndecidableInstances, MultiParamTypeClasses, ViewPatterns #-}
 
 module Lepton where
 
@@ -174,9 +174,10 @@ instance Show (CONT (a ': s) k) where
 extract :: CONT (a ': ctx) k -> DB ctx
 extract CHALT = Lepton.Nil
 extract (C0 _ c) = extract c
---extract (C1 c) = extract c
+extract (C1 (extract -> (TCons _ c))) = c --TCons undefined $ extract ( c)
 extract (CENTER a c) = TCons a $ extract c
-
+extract (CDROP (CENTER a c)) = TCons a (TCons undefined (extract c))
+extract (CDROPP (CENTER a c)) = TCons a (TCons undefined (TCons undefined (extract c)))
 
 
 exec :: CONT (a ': s) k -> a -> k
