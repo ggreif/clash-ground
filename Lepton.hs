@@ -88,17 +88,11 @@ eval' c'@(C1 c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capt
 --eval' (C1 a c) (Barylam f) = exec c (evalB (f (BaryVar a))) -- this is a gamble on the form of the control stack. Does it always hold? -- NO: CENTER can also be (see immediately below this)
 
 
-eval' c'@(CENTER a c''@(C1 c)) (Barylam f) | traceShow ("CENTERbruijn", show c') True = eval' (cSINK c) (f (BaryBruijn c'')) -- (f (BaryVar a))--- (BaryBruijn (_ c)))
-  where gr :: CONT (a ': here) k -> CONT there k' -> a
-        gr = undefined
-        cSINK :: CONT (b2 ': a3 ': s2) k -> CONT (b2 ': a3 ': a1 ': s2) k
-        cSINK = CDROP
-
-
+eval' c'@(CENTER a c''@(C1 c)) (Barylam f) | traceShow ("CENTERbruijn", show c') True = eval' (CDROP c) (f (BaryBruijn c''))
 
 --eval' c (Barylam f) = exec c (\a -> evalB (f (BaryBruijn 0)))
 {- can we use (DEM) ? -}
-eval' c (Barylam f) | traceShow ("VAR", show c) True = exec c (\a -> evalB (f (BaryVar a)))
+eval' c (Barylam f) | traceShow ("VAR -----> ", show c) True = exec c (\a -> evalB (f (BaryVar a)))
 
 
 
@@ -182,7 +176,7 @@ extract (CENTER a c) = TCons a $ extract c
 
 exec :: CONT (a ': s) k -> a -> k
 
-exec (CDROP c) f = exec c f -- (DEM)
+exec (CDROP c) f = exec c f
 
 
 exec (C1 (CENTER a c)) f = exec c (f a) -- (DEM)
