@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, RankNTypes, FlexibleInstances, UndecidableInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE GADTs, RankNTypes, FlexibleInstances, UndecidableInstances, MultiParamTypeClasses, FunctionalDependencies #-}
 
 module Lepton where
 
@@ -147,15 +147,21 @@ instance (Reverse (a ': d ': deep) `EqZip` Reverse shallow, d ': deep `Suffixed`
 type family DBI (odeep :: [*]) (dacc :: [*]) (sacc :: [*]) (deep :: [*]) (shallow :: [*]) :: Constraint where
   DBI orig dacc sacc (d ': deep) (s ': shallow) = DBI orig (d ': dacc) (s ': sacc) deep shallow
   DBI orig dacc sacc (d ': deep) '[] = DBI orig (d ': dacc) sacc deep '[]
-  DBI orig (d ': dacc) '[s] '[] '[] = (d ~ s, Consume d (Reverse (d ': dacc)) orig)
+  DBI orig (d ': dacc) '[s] '[] '[] = (d ~ s, Consume d (Reverse dacc) orig)
   DBI orig (d ': dacc) (s ': sacc) '[] '[] = (d ~ s, DBI orig dacc sacc '[] '[])
 
 type DeBruijnIndex deep shallow = DBI deep '[] '[] deep shallow
 
-class Consume d (rev :: [*]) (deep :: [*]) where
-  -- pll :: DB deep -> d
-instance Consume Int '[Int] '[Int]
-instance Consume Int '[Int, Int] '[Int, Int]
+class Consume d (rev :: [*]) (deep :: [*]) | deep -> rev where
+  peel :: DB deep -> d
+--instance Consume Int '[] '[Int]
+--instance Consume Int '[Int] '[Int, Int]
+
+instance Consume a '[] '[a] where
+  peel (TCons a _) = a
+
+instance Consume a ds (e ': deeps) => Consume a (d ': ds) (d ': e ': deeps) where
+  peel (TCons _ rest) = peel rest
 
 
 data CONT :: [*] -> * -> *  where
