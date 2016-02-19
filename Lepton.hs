@@ -145,6 +145,8 @@ type DeBruijnIndex deep shallow = DBI deep '[] '[] deep shallow
 
 class Consume d (rev :: [*]) (deep :: [*]) where
   peel :: DB rev -> DB deep -> d
+  peelC :: DB rev -> CONT (t ': deep) k -> d
+  peelC db (extract -> dbd) = peel db dbd
 
 instance Consume a '[] (a ': deeps) where
   peel _ (TCons a _) = a
@@ -174,7 +176,7 @@ instance Show (CONT (a ': s) k) where
 extract :: CONT (a ': ctx) k -> DB ctx
 extract CHALT = Lepton.Nil
 extract (C0 _ c) = extract c
-extract (C1 (extract -> (TCons _ c))) = c --TCons undefined $ extract ( c)
+extract (C1 (extract -> (TCons _ c))) = c
 extract (CENTER a c) = TCons a $ extract c
 extract (CDROP (CENTER a c)) = TCons a (TCons undefined (extract c))
 extract (CDROPP (CENTER a c)) = TCons a (TCons undefined (TCons undefined (extract c)))
