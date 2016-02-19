@@ -21,7 +21,7 @@ data Baryon s where
   Baryapp :: Baryon ((a -> b) ': s) -> Baryon (a ': s) -> Baryon (b ': s)
   BaryInt :: Int -> Baryon (Int ': s)
   BaryVar :: a -> Baryon (a ': s)
-  BaryBruijn :: CONT ((a -> b) ': s') k -> Baryon (a ': s)
+  BaryBruijn :: Consume a s' s => CONT ((a -> b) ': s') k -> Baryon (a ': s)
 
 instance Lam Baryon where
   lam = Barylam
@@ -111,8 +111,9 @@ eval' c (BaryVar v) = exec c v
 eval' c (BaryInt i) = exec c i
 {- ^^ expand evalB -}
 eval' c (BaryBruijn c') | traceShow ("@@", show c', show c) True = exec c (grab c' c)
-  where grab :: CONT ((a -> b) ': s') k' -> CONT (a ': s) k -> a
+  where grab :: Consume a s s' => CONT ((a -> b) ': s') k' -> CONT (a ': s) k -> a
         grab (C1 (CENTER a _)) _ = a
+        grab shallow deep = peelC (extract shallow) deep
 eval' c e = exec c (eval e)  -- (OWK)
 
 
