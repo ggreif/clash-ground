@@ -22,6 +22,7 @@ data Baryon s where
   BaryInt :: Int -> Baryon (Int ': s)
   BaryVar :: a -> Baryon (a ': s)
   BaryBruijn :: Consume a s' s => CONT ((a -> b) ': s') k -> Baryon (a ': s)
+  --BaryBruijn :: (DeBruijnIndex s (a ': s')) => CONT ((a -> b) ': s') k -> Baryon (a ': s)
 
 instance Lam Baryon where
   lam = Barylam
@@ -82,15 +83,15 @@ eval' :: CONT (a ': s) k -> Baryon (a ': s) -> k
 eval' c'@(C1 c) (Barylam f) | traceShow ("C1bruijn", show c') True = eval' c (f (BaryBruijn c'))
   --where exec (CENTER c) b = exec c b
 {- introduce CENTER for entering deeper scope -}
-eval' c'@(C1 c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capture the stack, later just the stack pointer!
+----eval' c'@(C1 c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capture the stack, later just the stack pointer!
 
 
 --eval' (C1 a c) (Barylam f) = exec c (evalB (f (BaryVar a))) -- this is a gamble on the form of the control stack. Does it always hold? -- NO: CENTER can also be (see immediately below this)
 
 
-eval' c'@(CENTER _ c''@(C1 c)) (Barylam f) | traceShow ("CENTERbruijn", show c') True = eval' (CDROP c) (f (BaryBruijn c''))
+----eval' c'@(CENTER _ c''@(C1 c)) (Barylam f) | traceShow ("CENTERbruijn", show c') True = eval' (CDROP c) (f (BaryBruijn c''))
 
-eval' c'@(CDROP (CENTER _ c''@(C1 c))) (Barylam f) | traceShow ("DROPbruijn", show c') True = eval' (CDROPP c) (f (BaryBruijn c''))
+----eval' c'@(CDROP (CENTER _ c''@(C1 c))) (Barylam f) | traceShow ("DROPbruijn", show c') True = eval' (CDROPP c) (f (BaryBruijn c''))
 
 
 --eval' c (Barylam f) = exec c (\a -> evalB (f (BaryBruijn 0)))
@@ -110,10 +111,13 @@ eval' c (f `Baryapp` a) = exec c (evalB f $ evalB a)
 eval' c (BaryVar v) = exec c v
 eval' c (BaryInt i) = exec c i
 {- ^^ expand evalB -}
+eval' c (BaryBruijn c') | traceShow ("@@", show c', show c) True = exec c (peelC (extract c') c)
+{-
 eval' c (BaryBruijn c') | traceShow ("@@", show c', show c) True = exec c (grab c' c)
   where grab :: Consume a s s' => CONT ((a -> b) ': s') k' -> CONT (a ': s) k -> a
         grab (C1 (CENTER a _)) _ = a
         grab shallow deep = peelC (extract shallow) deep
+-}
 eval' c e = exec c (eval e)  -- (OWK)
 
 
