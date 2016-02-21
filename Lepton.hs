@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, RankNTypes, FlexibleInstances, UndecidableInstances, MultiParamTypeClasses, ViewPatterns #-}
+{-# LANGUAGE GADTs, RankNTypes, FlexibleInstances, UndecidableInstances, MultiParamTypeClasses, ViewPatterns, AllowAmbiguousTypes #-}
 
 module Lepton where
 
@@ -21,7 +21,7 @@ data Baryon s where
   Baryapp :: Baryon ((a -> b) ': s) -> Baryon (a ': s) -> Baryon (b ': s)
   BaryInt :: Int -> Baryon (Int ': s)
   BaryVar :: a -> Baryon (a ': s)
-  BaryBruijn :: Consume a s' s => CONT ((a -> b) ': s') k -> Baryon (a ': s)
+  BaryBruijn :: ((idx ++ (a ': s)) ~ s', Consume a idx (a ': s) s') => CONT ((a -> b) ': s') k -> Baryon (a ': s)
   --BaryBruijn :: (DeBruijnIndex s (a ': s')) => CONT ((a -> b) ': s') k -> Baryon (a ': s)
 
 instance Lam Baryon where
@@ -80,7 +80,7 @@ t2 = test2
 eval' :: CONT (a ': s) k -> Baryon (a ': s) -> k
 
 
-eval' c'@(C1 c) (Barylam f) | traceShow ("C1bruijn", show c') True = eval' c (f (BaryBruijn c'))
+--------eval' c'@(C1 c) (Barylam f) | traceShow ("C1bruijn", show c') True = eval' c (f (BaryBruijn c'))
   --where exec (CENTER c) b = exec c b
 {- introduce CENTER for entering deeper scope -}
 ----eval' c'@(C1 c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capture the stack, later just the stack pointer!
@@ -111,7 +111,7 @@ eval' c (f `Baryapp` a) = exec c (evalB f $ evalB a)
 eval' c (BaryVar v) = exec c v
 eval' c (BaryInt i) = exec c i
 {- ^^ expand evalB -}
-eval' c (BaryBruijn c') | traceShow ("@@", show c', show c) True = exec c (peelC (extract c') c)
+eval' c (BaryBruijn c') | traceShow ("@@", show c', show c) True = exec c (peelC rev c)
 {-
 eval' c (BaryBruijn c') | traceShow ("@@", show c', show c) True = exec c (grab c' c)
   where grab :: Consume a s s' => CONT ((a -> b) ': s') k' -> CONT (a ': s) k -> a
@@ -140,23 +140,38 @@ type family EqZip (deep :: [*]) (shallow :: [*]) :: Constraint where
 -- AVENUE B
 -- DeBruijnIndex [f, e, d, c, b, a] [c, b, a] = Consume [f, e, d, c (, ...)] 
 -- :kind! DeBruijnIndex '[Float, Either Int Int, Double, Char, Bool, Int] '[Char, Bool, Int]
-type family DBI (odeep :: [*]) (dacc :: [*]) (sacc :: [*]) (deep :: [*]) (shallow :: [*]) :: Constraint where
-  DBI orig dacc sacc (d ': deep) (s ': shallow) = DBI orig (d ': dacc) (s ': sacc) deep shallow
-  DBI orig dacc sacc (d ': deep) '[] = DBI orig (d ': dacc) sacc deep '[]
-  DBI orig (d ': dacc) '[s] '[] '[] = (d ~ s, Consume d (Reverse dacc) orig)
-  DBI orig (d ': dacc) (s ': sacc) '[] '[] = (d ~ s, DBI orig dacc sacc '[] '[])
+type family DBI (odeep :: [*]) (oshallow :: [*])(dacc :: [*]) (sacc :: [*]) (deep :: [*]) (shallow :: [*]) :: Constraint where
+  DBI orig oshall dacc sacc (d ': deep) (s ': shallow) = DBI orig oshall (d ': dacc) (s ': sacc) deep shallow
+  DBI orig oshall dacc sacc (d ': deep) '[] = DBI orig oshall (d ': dacc) sacc deep '[]
+  DBI orig oshall (d ': dacc) '[s] '[] '[] = (d ~ s, Builds (Reverse dacc), Consume d oshall (Reverse dacc) orig, ((Reverse dacc) ++ oshall) ~ orig)
+  DBI orig oshall (d ': dacc) (s ': sacc) '[] '[] = (d ~ s, DBI orig oshall dacc sacc '[] '[])
 
-type DeBruijnIndex deep shallow = DBI deep '[] '[] deep shallow
+type DeBruijnIndex deep shallow = DBI deep shallow '[] '[] deep shallow
 
-class Consume d (rev :: [*]) (deep :: [*]) where
+type family (idx ::[*]) ++ (shallow :: [*]) :: [*] where
+  '[] ++ shallow = shallow
+  (a ': idx) ++ shallow = a ': idx ++ shallow
+
+class Builds (idx ::[*]) where
+  rev :: DB idx
+
+instance Builds '[] where
+  rev = Lepton.Nil
+
+instance Builds as => Builds (a ': as) where
+  rev = TCons undefined rev
+
+class {-((rev ++ (d ': shallow)) ~ deep) => -}Consume d (rev :: [*]) (shallow :: [*]) (deep :: [*]) where
   peel :: DB rev -> DB deep -> d
   peelC :: DB rev -> CONT (t ': deep) k -> d
   peelC db (extract -> dbd) = peel db dbd
 
-instance Consume a '[] (a ': deeps) where
+instance Consume a '[] (a ': sha) (a ': sha) where
+  --rev = Lepton.Nil
   peel _ (TCons a _) = a
 
-instance Consume a ds (deeps) => Consume a (d ': ds) (d ': deeps) where
+instance ({-(ds ++ (a ': sha)) ~ deeps, -}Consume a ds sha deeps) => Consume a (d ': ds) sha (d ': deeps) where
+  --rev = TCons undefined rev
   peel (TCons _ rest0) (TCons _ rest) = peel rest0 rest
 
 
