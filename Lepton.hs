@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, RankNTypes, FlexibleInstances, UndecidableInstances, MultiParamTypeClasses, ViewPatterns, AllowAmbiguousTypes #-}
+{-# LANGUAGE GADTs, RankNTypes, FlexibleInstances, UndecidableInstances, MultiParamTypeClasses, ViewPatterns, AllowAmbiguousTypes, FunctionalDependencies #-}
 
 module Lepton where
 
@@ -21,7 +21,7 @@ data Baryon s where
   Baryapp :: Baryon ((a -> b) ': s) -> Baryon (a ': s) -> Baryon (b ': s)
   BaryInt :: Int -> Baryon (Int ': s)
   BaryVar :: a -> Baryon (a ': s)
-  BaryBruijn :: ((idx ++ (a ': s)) ~ s', Consume a idx (a ': s) s') => CONT ((a -> b) ': s') k -> Baryon (a ': s)
+  BaryBruijn :: (DbIndex (a ': s) s' ~ idx, Consume a idx s', Builds idx) => CONT ((a -> b) ': s') k -> Baryon (a ': s)
   --BaryBruijn :: (DeBruijnIndex s (a ': s')) => CONT ((a -> b) ': s') k -> Baryon (a ': s)
 
 instance Lam Baryon where
@@ -80,7 +80,7 @@ t2 = test2
 eval' :: CONT (a ': s) k -> Baryon (a ': s) -> k
 
 
---------eval' c'@(C1 c) (Barylam f) | traceShow ("C1bruijn", show c') True = eval' c (f (BaryBruijn c'))
+eval' c'@(C1 c) (Barylam f) | traceShow ("C1bruijn", show c') True = eval' c (f (BaryBruijn c'))
   --where exec (CENTER c) b = exec c b
 {- introduce CENTER for entering deeper scope -}
 ----eval' c'@(C1 c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capture the stack, later just the stack pointer!
@@ -111,7 +111,9 @@ eval' c (f `Baryapp` a) = exec c (evalB f $ evalB a)
 eval' c (BaryVar v) = exec c v
 eval' c (BaryInt i) = exec c i
 {- ^^ expand evalB -}
-eval' c (BaryBruijn c') | traceShow ("@@", show c', show c) True = exec c (peelC rev c)
+eval' c (BaryBruijn c') | traceShow ("@@", show c', show c) True = exec c (peelC (r c c') c)
+  where r :: Builds (DbIndex (a ': sh) deep) => CONT deep k' -> CONT ((a->b)':sh) k -> DB (DbIndex (a ': sh) deep)
+        r _ _ = rev
 {-
 eval' c (BaryBruijn c') | traceShow ("@@", show c', show c) True = exec c (grab c' c)
   where grab :: Consume a s s' => CONT ((a -> b) ': s') k' -> CONT (a ': s) k -> a
@@ -143,7 +145,7 @@ type family EqZip (deep :: [*]) (shallow :: [*]) :: Constraint where
 type family DBI (odeep :: [*]) (oshallow :: [*])(dacc :: [*]) (sacc :: [*]) (deep :: [*]) (shallow :: [*]) :: Constraint where
   DBI orig oshall dacc sacc (d ': deep) (s ': shallow) = DBI orig oshall (d ': dacc) (s ': sacc) deep shallow
   DBI orig oshall dacc sacc (d ': deep) '[] = DBI orig oshall (d ': dacc) sacc deep '[]
-  DBI orig oshall (d ': dacc) '[s] '[] '[] = (d ~ s, Builds (Reverse dacc), Consume d oshall (Reverse dacc) orig, ((Reverse dacc) ++ oshall) ~ orig)
+  DBI orig oshall (d ': dacc) '[s] '[] '[] = (d ~ s, Consume d (Reverse dacc) orig, Reverse dacc ~ DbIndex oshall orig)
   DBI orig oshall (d ': dacc) (s ': sacc) '[] '[] = (d ~ s, DBI orig oshall dacc sacc '[] '[])
 
 type DeBruijnIndex deep shallow = DBI deep shallow '[] '[] deep shallow
@@ -161,18 +163,42 @@ instance Builds '[] where
 instance Builds as => Builds (a ': as) where
   rev = TCons undefined rev
 
-class {-((rev ++ (d ': shallow)) ~ deep) => -}Consume d (rev :: [*]) (shallow :: [*]) (deep :: [*]) where
+class Builds rev => Consume d (rev :: [*]) (deep :: [*]) where
   peel :: DB rev -> DB deep -> d
   peelC :: DB rev -> CONT (t ': deep) k -> d
   peelC db (extract -> dbd) = peel db dbd
 
-instance Consume a '[] (a ': sha) (a ': sha) where
-  --rev = Lepton.Nil
+instance Consume a '[] (a ': sha) where
   peel _ (TCons a _) = a
 
-instance ({-(ds ++ (a ': sha)) ~ deeps, -}Consume a ds sha deeps) => Consume a (d ': ds) sha (d ': deeps) where
-  --rev = TCons undefined rev
+instance ({-(ds ++ (a ': sha)) ~ deeps, -}Consume a ds deeps) => Consume a (d ': ds) (d ': deeps) where
   peel (TCons _ rest0) (TCons _ rest) = peel rest0 rest
+
+
+-- AVENUE C
+
+type family INDEX (dacc :: [*]) (sacc :: [*]) (deep :: [*]) (shallow :: [*]) :: [*] where
+  INDEX dacc sacc (d ': deep) (s ': shallow) = INDEX (d ': dacc) (s ': sacc) deep shallow
+  INDEX dacc sacc (d ': deep) '[] = INDEX (d ': dacc) sacc deep '[]
+  INDEX (d ': dacc) '[s] '[] '[] = Reverse dacc
+  INDEX (d ': dacc) (s ': sacc) '[] '[] = INDEX dacc sacc '[] '[]
+
+type DbIndex shallow deep = INDEX '[] '[] deep shallow
+
+class Builds (DbIndex shallow deep) => LevelDiff (shallow :: [*]) (deep :: [*]) where
+  type Idx shallow deep :: [*]
+  type Idx shallow deep = DbIndex shallow deep
+
+--instance (shallow ~ deep) => LevelDiff shallow deep where
+--  type Idx shallow deep = '[]
+
+--instance LevelDiff shallow deep => LevelDiff shallow (d ': deep) where
+--  --type Idx shallow (d ': deep) = d ': Idx shallow deep
+
+-- AVENUE D
+
+-- Sketch:
+--    Map (==shallow, etc.) (Tails deep)  ---> [(False, shallow, deep), (False, shallow, d1), (True, sh, dn), ...]
 
 
 data CONT :: [*] -> * -> * where
