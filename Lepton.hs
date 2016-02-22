@@ -8,7 +8,8 @@ import Debug.Trace (traceShow)
 import Data.Type.Equality
 
 class Lam f where
-  lam :: ((forall i . (DeBruijnIndex i (a ': s)) => f (a ': i)) -> f (b ': a ': s)) -> f ((a -> b) ': s)
+  --lam :: ((forall i . (DeBruijnIndex i (a ': s)) => f (a ': i)) -> f (b ': a ': s)) -> f ((a -> b) ': s)
+  lam :: ((forall i . (TRUNC' (Trunc '[] (a ': s) i) (a ': s) i) => f (a ': i)) -> f (b ': a ': s)) -> f ((a -> b) ': s)
   app :: f ((a -> b) ': s) -> f (a ': s) -> f (b ': s)
 
 class Val f where
@@ -18,12 +19,14 @@ class Eval f where
   eval :: f (a ': s) -> a
 
 data Baryon s where
-  Barylam :: ((forall i . (DeBruijnIndex i (a ': s)) => Baryon (a ': i)) -> Baryon (b ': a ': s)) -> Baryon ((a -> b) ': s)
+  --Barylam :: ((forall i . (DeBruijnIndex i (a ': s)) => Baryon (a ': i)) -> Baryon (b ': a ': s)) -> Baryon ((a -> b) ': s)
+  Barylam :: ((forall i . (TRUNC' (Trunc '[] (a ': s) i) (a ': s) i) => Baryon (a ': i)) -> Baryon (b ': a ': s)) -> Baryon ((a -> b) ': s)
   Baryapp :: Baryon ((a -> b) ': s) -> Baryon (a ': s) -> Baryon (b ': s)
   BaryInt :: Int -> Baryon (Int ': s)
   BaryVar :: a -> Baryon (a ': s)
   --BaryBruijn :: (DbIndex (a ': s) s' ~ idx, Consume a idx s', Builds idx) => CONT ((a -> b) ': s') k -> Baryon (a ': s)
-  BaryBruijn :: (DeBruijnIndex s (a ': s')) => CONT ((a -> b) ': s') k -> Baryon (a ': s)
+  --BaryBruijn :: (DeBruijnIndex s (a ': s')) => CONT ((a -> b) ': s') k -> Baryon (a ': s)
+  BaryBruijn :: (TRUNC' idx (a ': s') s) => CONT ((a -> b) ': s') k -> Baryon (a ': s)
 
 instance Lam Baryon where
   lam = Barylam
@@ -113,7 +116,7 @@ eval' c (BaryVar v) = exec c v
 eval' c (BaryInt i) = exec c i
 {- ^^ expand evalB -}
 
-eval' c (BaryBruijn (C1 c'@CENTER{})) | traceShow ("@@", show c', show c) True = exec c (peelX (extract c') (extract c))
+eval' c (BaryBruijn (C1 c'@CENTER{})) | traceShow ("@@", show c', show c) True = exec c (trunc (extract c') (extract c))
   where r :: Builds (DbIndex (a ': sh) deep) => CONT deep k' -> CONT ((a->b)':sh) k -> DB (DbIndex (a ': sh) deep)
         r _ _ = rev
 {-
@@ -254,6 +257,11 @@ instance ('[] ~ Trunc '[] (a ': shallow) deep, (a ': shallow) ~ deep) => TRUNC '
 
 instance ((i ': indx) ~ Trunc '[] (a ': shallow) (d ': deep), TRUNC indx (a ': shallow) deep) => TRUNC (i ': indx) (a ': shallow) (d ': deep) where
   trunc sh@TCons{} (TCons _ rest) = trunc sh rest
+
+
+class TRUNC index shallow deep => TRUNC' (index :: [*]) (shallow :: [*]) (deep :: [*]) | shallow deep -> index
+
+instance (index ~ Trunc '[] shallow deep, TRUNC index shallow deep) => TRUNC' index shallow deep
 
 
 data CONT :: [*] -> * -> * where
