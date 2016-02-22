@@ -238,6 +238,14 @@ instance Indexable' (a ': shallow == deep) (a ': shallow) deep => Indexable' Fal
   index shallow@TCons{} (TCons _ deep) = undefined -- index shallow deep
 
 
+-- AVENUE E
+
+-- :kind! Trunc '[] '[Char, Bool, Int] '[Float, Either Int Int, Double, Char, Bool, Int]
+
+type family Trunc (acc :: [*]) (shallow :: [*]) (deep :: [*]) :: [*] where
+  Trunc acc sh sh = acc
+  Trunc acc sh (d ': deep) = d ': Trunc acc sh deep
+
 
 data CONT :: [*] -> * -> * where
   C0 :: Baryon ((a -> b) ': s) -> !(CONT (b ': s) k) -> CONT (a ': s) k
