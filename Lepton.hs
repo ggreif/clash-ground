@@ -246,6 +246,15 @@ type family Trunc (acc :: [*]) (shallow :: [*]) (deep :: [*]) :: [*] where
   Trunc acc sh sh = acc
   Trunc acc sh (d ': deep) = d ': Trunc acc sh deep
 
+class (index ~ Trunc '[] shallow deep) => TRUNC (index :: [*]) (shallow :: [*]) (deep :: [*]) | {-shallow deep -> index, -}shallow index -> deep where
+  trunc :: (shallow ~ (a ': sh)) => DB shallow -> DB deep -> a
+
+instance ('[] ~ Trunc '[] (a ': shallow) deep, (a ': shallow) ~ deep) => TRUNC '[] (a ': shallow) deep where
+  trunc TCons{} (TCons a _) = a
+
+instance ((i ': indx) ~ Trunc '[] (a ': shallow) (d ': deep), TRUNC indx (a ': shallow) deep) => TRUNC (i ': indx) (a ': shallow) (d ': deep) where
+  trunc sh@TCons{} (TCons _ rest) = trunc sh rest
+
 
 data CONT :: [*] -> * -> * where
   C0 :: Baryon ((a -> b) ': s) -> !(CONT (b ': s) k) -> CONT (a ': s) k
