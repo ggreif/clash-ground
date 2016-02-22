@@ -6,6 +6,7 @@ import CLaSH.Prelude
 import GHC.Exts
 import Debug.Trace (traceShow)
 import Data.Type.Equality
+import qualified Data.List as L
 
 class Lam f where
   --lam :: ((forall i . (DeBruijnIndex i (a ': s)) => f (a ': i)) -> f (b ': a ': s)) -> f ((a -> b) ': s)
@@ -46,6 +47,13 @@ instance Applicative (Baryon s) where
   pure = BaryVar
   (<*>) = app
 -}
+
+instance Show (Baryon s) where
+  show (Barylam f) = "Barylam f"
+  show (Baryapp f a) = "Baryapp (" L.++show f L.++") (" L.++show a L.++")"
+  show (BaryInt i) = show i
+  show (BaryVar _) = "<var>"
+  show (BaryBruijn cont) = "PPP " L.++ show cont
 
 -- Here is our standard evaluator:
 --
@@ -116,16 +124,16 @@ eval' c (BaryVar v) = exec c v
 eval' c (BaryInt i) = exec c i
 {- ^^ expand evalB -}
 
-eval' c (BaryBruijn (C1 c'@CENTER{})) | traceShow ("@@", show c', show c) True = exec c (trunc (extract c') (extract c))
-  --where r :: Builds (DbIndex (a ': sh) deep) => CONT deep k' -> CONT ((a->b)':sh) k -> DB (DbIndex (a ': sh) deep)
-   --     r _ _ = rev
+eval' c (BaryBruijn (C1 c')) | traceShow ("@@", show c', show c) True = exec c (trunc (extract c') (extract c))
+eval' c@(CDROP (CENTER _ _)) (BaryBruijn c'@(CENTER _ _)) | traceShow ("@@@", show c', show c) True = exec c (trunc (extract c') (extract c))
+
 {-
 eval' c (BaryBruijn c') | traceShow ("@@", show c', show c) True = exec c (grab c' c)
   where grab :: Consume a s s' => CONT ((a -> b) ': s') k' -> CONT (a ': s) k -> a
         grab (C1 (CENTER a _)) _ = a
         grab shallow deep = peelC (extract shallow) deep
 -}
-eval' c e = exec c (eval (traceShow ("EVAL:::", c) e))  -- (OWK)
+eval' c e = exec c (eval (traceShow ("EVAL:::", c, e) e))  -- (OWK)
 
 
 
