@@ -5,6 +5,7 @@ module Lepton where
 import CLaSH.Prelude
 import GHC.Exts
 import Debug.Trace (traceShow)
+import Data.Type.Equality
 
 class Lam f where
   lam :: ((forall i . (DeBruijnIndex i (a ': s)) => f (a ': i)) -> f (b ': a ': s)) -> f ((a -> b) ': s)
@@ -21,8 +22,8 @@ data Baryon s where
   Baryapp :: Baryon ((a -> b) ': s) -> Baryon (a ': s) -> Baryon (b ': s)
   BaryInt :: Int -> Baryon (Int ': s)
   BaryVar :: a -> Baryon (a ': s)
-  BaryBruijn :: (DbIndex (a ': s) s' ~ idx, Consume a idx s', Builds idx) => CONT ((a -> b) ': s') k -> Baryon (a ': s)
-  --BaryBruijn :: (DeBruijnIndex s (a ': s')) => CONT ((a -> b) ': s') k -> Baryon (a ': s)
+  --BaryBruijn :: (DbIndex (a ': s) s' ~ idx, Consume a idx s', Builds idx) => CONT ((a -> b) ': s') k -> Baryon (a ': s)
+  BaryBruijn :: (DeBruijnIndex s (a ': s')) => CONT ((a -> b) ': s') k -> Baryon (a ': s)
 
 instance Lam Baryon where
   lam = Barylam
@@ -111,7 +112,8 @@ eval' c (f `Baryapp` a) = exec c (evalB f $ evalB a)
 eval' c (BaryVar v) = exec c v
 eval' c (BaryInt i) = exec c i
 {- ^^ expand evalB -}
-eval' c (BaryBruijn c') | traceShow ("@@", show c', show c) True = exec c (peelC (r c c') c)
+
+eval' c (BaryBruijn (C1 c'@CENTER{})) | traceShow ("@@", show c', show c) True = exec c (peelX (extract c') (extract c))
   where r :: Builds (DbIndex (a ': sh) deep) => CONT deep k' -> CONT ((a->b)':sh) k -> DB (DbIndex (a ': sh) deep)
         r _ _ = rev
 {-
@@ -148,7 +150,11 @@ type family DBI (odeep :: [*]) (oshallow :: [*])(dacc :: [*]) (sacc :: [*]) (dee
   DBI orig oshall (d ': dacc) '[s] '[] '[] = (d ~ s, Consume d (Reverse dacc) orig, Reverse dacc ~ DbIndex oshall orig)
   DBI orig oshall (d ': dacc) (s ': sacc) '[] '[] = (d ~ s, DBI orig oshall dacc sacc '[] '[])
 
-type DeBruijnIndex deep shallow = DBI deep shallow '[] '[] deep shallow
+--type DeBruijnIndex deep shallow = DBI deep shallow '[] '[] deep shallow
+class DBI deep shallow '[] '[] deep shallow => DeBruijnIndex deep shallow where
+  peelX :: (shallow ~ (a ': sh)) => DB shallow -> DB deep -> a
+instance DBI deep (a ': shallow) '[] '[] deep (a ': shallow) => DeBruijnIndex deep (a ': shallow) where
+  peelX (TCons a _) _ = a
 
 type family (idx ::[*]) ++ (shallow :: [*]) :: [*] where
   '[] ++ shallow = shallow
@@ -199,6 +205,38 @@ class Builds (DbIndex shallow deep) => LevelDiff (shallow :: [*]) (deep :: [*]) 
 
 -- Sketch:
 --    Map (==shallow, etc.) (Tails deep)  ---> [(False, shallow, deep), (False, shallow, d1), (True, sh, dn), ...]
+
+{-
+type family EqList (a :: [*]) (b :: [*]) where
+  EqList a a = 'True
+  EqList a b = 'False
+type instance a == b = EqList a b
+-}
+
+data Bool' b where
+  T :: Bool' True
+  F :: Bool' False
+
+class Boolable (b :: Bool) where
+ theBool :: Bool' b
+
+instance Boolable True where theBool = T
+instance Boolable False where theBool = F
+
+
+class (Indexable' (shallow == deep) shallow deep) => Indexable (shallow :: [*]) (deep :: [*])
+instance Indexable' (shallow == deep) shallow deep => Indexable (shallow :: [*]) (deep :: [*])
+
+class Boolable same => Indexable' (same :: Bool) (shallow :: [*]) (deep :: [*]) where
+  index :: ((a ': sh) ~ shallow) => DB shallow -> DB deep -> a
+
+instance Indexable' True (a ': shallow) (a ': shallow) where
+  index _ (TCons a _) = a
+
+
+instance Indexable' (a ': shallow == deep) (a ': shallow) deep => Indexable' False (a ': shallow) (d ': deep) where
+  index shallow@TCons{} (TCons _ deep) = undefined -- index shallow deep
+
 
 
 data CONT :: [*] -> * -> * where
