@@ -87,15 +87,15 @@ eval' :: CONT (a ': s) k -> Baryon (a ': s) -> k
 eval' c'@(C1 c) (Barylam f) | traceShow ("C1bruijn", show c') True = eval' c (f (BaryBruijn c'))
   --where exec (CENTER c) b = exec c b
 {- introduce CENTER for entering deeper scope -}
-----eval' c'@(C1 c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capture the stack, later just the stack pointer!
+eval' c'@(C1 c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capture the stack, later just the stack pointer!
 
 
 --eval' (C1 a c) (Barylam f) = exec c (evalB (f (BaryVar a))) -- this is a gamble on the form of the control stack. Does it always hold? -- NO: CENTER can also be (see immediately below this)
 
 
-----eval' c'@(CENTER _ c''@(C1 c)) (Barylam f) | traceShow ("CENTERbruijn", show c') True = eval' (CDROP c) (f (BaryBruijn c''))
+eval' c'@(CENTER _ c''@(C1 c)) (Barylam f) | traceShow ("CENTERbruijn", show c') True = eval' (CDROP c) (f (BaryBruijn c'))
 
-----eval' c'@(CDROP (CENTER _ c''@(C1 c))) (Barylam f) | traceShow ("DROPbruijn", show c') True = eval' (CDROPP c) (f (BaryBruijn c''))
+eval' c'@(CDROP (CENTER _ c''@(C1 c))) (Barylam f) | traceShow ("DROPbruijn", show c') True = eval' (CDROPP c) (f (BaryBruijn c'))
 
 
 --eval' c (Barylam f) = exec c (\a -> evalB (f (BaryBruijn 0)))
@@ -117,15 +117,15 @@ eval' c (BaryInt i) = exec c i
 {- ^^ expand evalB -}
 
 eval' c (BaryBruijn (C1 c'@CENTER{})) | traceShow ("@@", show c', show c) True = exec c (trunc (extract c') (extract c))
-  where r :: Builds (DbIndex (a ': sh) deep) => CONT deep k' -> CONT ((a->b)':sh) k -> DB (DbIndex (a ': sh) deep)
-        r _ _ = rev
+  --where r :: Builds (DbIndex (a ': sh) deep) => CONT deep k' -> CONT ((a->b)':sh) k -> DB (DbIndex (a ': sh) deep)
+   --     r _ _ = rev
 {-
 eval' c (BaryBruijn c') | traceShow ("@@", show c', show c) True = exec c (grab c' c)
   where grab :: Consume a s s' => CONT ((a -> b) ': s') k' -> CONT (a ': s) k -> a
         grab (C1 (CENTER a _)) _ = a
         grab shallow deep = peelC (extract shallow) deep
 -}
-eval' c e = exec c (eval e)  -- (OWK)
+eval' c e = exec c (eval (traceShow ("EVAL:::", c) e))  -- (OWK)
 
 
 
@@ -249,14 +249,14 @@ type family Trunc (acc :: [*]) (shallow :: [*]) (deep :: [*]) :: [*] where
   Trunc acc sh sh = acc
   Trunc acc sh (d ': deep) = d ': Trunc acc sh deep
 
-class (index ~ Trunc '[] shallow deep) => TRUNC (index :: [*]) (shallow :: [*]) (deep :: [*]) | {-shallow deep -> index, -}shallow index -> deep where
+class (index ~ Trunc '[] shallow deep) => TRUNC (index :: [*]) (shallow :: [*]) (deep :: [*]) | shallow index -> deep where
   trunc :: (shallow ~ (a ': sh)) => DB shallow -> DB deep -> a
 
 instance ('[] ~ Trunc '[] (a ': shallow) deep, (a ': shallow) ~ deep) => TRUNC '[] (a ': shallow) deep where
-  trunc TCons{} (TCons a _) = a
+  trunc _ (TCons a _) = a
 
 instance ((i ': indx) ~ Trunc '[] (a ': shallow) (d ': deep), TRUNC indx (a ': shallow) deep) => TRUNC (i ': indx) (a ': shallow) (d ': deep) where
-  trunc sh@TCons{} (TCons _ rest) = trunc sh rest
+  trunc sh (TCons _ rest) = trunc sh rest
 
 
 class TRUNC index shallow deep => TRUNC' (index :: [*]) (shallow :: [*]) (deep :: [*]) | shallow deep -> index
