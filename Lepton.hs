@@ -28,6 +28,7 @@ data Baryon s where
   --BaryBruijn :: (DbIndex (a ': s) s' ~ idx, Consume a idx s', Builds idx) => CONT ((a -> b) ': s') k -> Baryon (a ': s)
   --BaryBruijn :: (DeBruijnIndex s (a ': s')) => CONT ((a -> b) ': s') k -> Baryon (a ': s)
   BaryBruijn :: (TRUNC idx (a ': s') s) => CONT ((a -> b) ': s') k -> Baryon (a ': s)
+  BaryBruijnX :: (TRUNC idx (a ': s') s) => CONT (b ': a ': s') k -> Baryon (a ': s)
 
 instance Lam Baryon where
   lam = Barylam
@@ -91,6 +92,8 @@ t2 = test2
 
 eval' :: CONT (a ': s) k -> Baryon (a ': s) -> k
 
+-- IS THIS A BETTER WAY TO ELIMINATE (C1 (CENTER ...)) ???
+--eval' (C1 c@CENTER{}) (Barylam f) | traceShow ("C1bruijn", show c) True = eval' c (f (BaryBruijnX c))
 
 eval' c'@(C1 c) (Barylam f) | traceShow ("C1bruijn", show c') True = eval' c (f (BaryBruijn c'))
   --where exec (CENTER c) b = exec c b
@@ -101,7 +104,7 @@ eval' c'@(C1 c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capt
 --eval' (C1 a c) (Barylam f) = exec c (evalB (f (BaryVar a))) -- this is a gamble on the form of the control stack. Does it always hold? -- NO: CENTER can also be (see immediately below this)
 
 
-eval' c'@(CENTER _ c''@(C1 c)) (Barylam f) | traceShow ("CENTERbruijn", show c') True = eval' (CDROP c) (f (BaryBruijn c'))
+--eval' c'@(CENTER _ c''@(C1 c)) (Barylam f) | traceShow ("CENTERbruijn", show c') True = eval' (CDROP c) (f (BaryBruijn c'))
 
 eval' c'@(CDROP (CENTER _ c''@(C1 c))) (Barylam f) | traceShow ("DROPbruijn", show c') True = eval' (CDROPP c) (f (BaryBruijn c'))
 
@@ -287,7 +290,7 @@ data CONT :: [*] -> * -> * where
   C1 :: !(CONT (b ': a ': s) k) -> CONT ((a -> b) ': s) k
   --CENTER :: !(CONT (b ': s) k) -> CONT (b ': a ': s) k
   CENTER :: a -> !(CONT (b ': s) k) -> CONT (b ': a ': s) k
-  CDROP :: !(CONT (b ': a ': s) k) -> CONT (b ': a ': x ': s) k
+  CDROP :: !(CONT (b ': a ': s) k) -> CONT (b ': x ': a ': s) k
   CDROPP :: !(CONT (b ': a ': s) k) -> CONT (b ': a ': x ': y ': s) k
   CHALT :: CONT '[a] a
 
@@ -306,7 +309,8 @@ extract CHALT = Lepton.Nil
 extract (C0 _ c) = extract c
 --extract (C1 (extract -> (TCons _ c))) = c
 extract (CENTER a c) = TCons a $ extract c
-extract (CDROP (CENTER a c)) = TCons a (TCons (error $ show ("CDROP", c)) (extract c))
+--extract (CDROP (CENTER a c)) = TCons a (TCons (error $ show ("CDROP", c)) (extract c))
+extract (CDROP (CENTER a c)) = TCons (error $ show ("CDROP", c)) (TCons a (extract c))
 extract (CDROPP (CENTER a c)) = TCons a (TCons (error $ show ("CDROPP-0", c)) (TCons (error $ show ("CDROPP-1", c)) (extract c)))
 
 
