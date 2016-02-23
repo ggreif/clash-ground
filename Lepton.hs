@@ -4,13 +4,13 @@ module Lepton where
 
 import CLaSH.Prelude
 import GHC.Exts
-import Debug.Trace (traceShow)
+import Debug.Trace (trace, traceShow, traceShowId)
 import Data.Type.Equality
 import qualified Data.List as L
 
 class Lam f where
   --lam :: ((forall i . (DeBruijnIndex i (a ': s)) => f (a ': i)) -> f (b ': a ': s)) -> f ((a -> b) ': s)
-  lam :: ((forall i . (TRUNC' (Trunc '[] (a ': s) i) (a ': s) i) => f (a ': i)) -> f (b ': a ': s)) -> f ((a -> b) ': s)
+  lam :: ((forall i . (TRUNC (Trunc '[] (a ': s) i) (a ': s) i) => f (a ': i)) -> f (b ': a ': s)) -> f ((a -> b) ': s)
   app :: f ((a -> b) ': s) -> f (a ': s) -> f (b ': s)
 
 class Val f where
@@ -21,13 +21,13 @@ class Eval f where
 
 data Baryon s where
   --Barylam :: ((forall i . (DeBruijnIndex i (a ': s)) => Baryon (a ': i)) -> Baryon (b ': a ': s)) -> Baryon ((a -> b) ': s)
-  Barylam :: ((forall i . (TRUNC' (Trunc '[] (a ': s) i) (a ': s) i) => Baryon (a ': i)) -> Baryon (b ': a ': s)) -> Baryon ((a -> b) ': s)
+  Barylam :: ((forall i . (TRUNC (Trunc '[] (a ': s) i) (a ': s) i) => Baryon (a ': i)) -> Baryon (b ': a ': s)) -> Baryon ((a -> b) ': s)
   Baryapp :: Baryon ((a -> b) ': s) -> Baryon (a ': s) -> Baryon (b ': s)
   BaryInt :: Int -> Baryon (Int ': s)
   BaryVar :: a -> Baryon (a ': s)
   --BaryBruijn :: (DbIndex (a ': s) s' ~ idx, Consume a idx s', Builds idx) => CONT ((a -> b) ': s') k -> Baryon (a ': s)
   --BaryBruijn :: (DeBruijnIndex s (a ': s')) => CONT ((a -> b) ': s') k -> Baryon (a ': s)
-  BaryBruijn :: (TRUNC' idx (a ': s') s) => CONT ((a -> b) ': s') k -> Baryon (a ': s)
+  BaryBruijn :: (TRUNC idx (a ': s') s) => CONT ((a -> b) ': s') k -> Baryon (a ': s)
 
 instance Lam Baryon where
   lam = Barylam
@@ -125,7 +125,7 @@ eval' c (BaryInt i) = exec c i
 {- ^^ expand evalB -}
 
 eval' c (BaryBruijn (C1 c')) | traceShow ("@@", show c', show c) True = exec c (trunc (extract c') (extract c))
-eval' c@(CDROP (CENTER _ _)) (BaryBruijn c'@(CENTER _ _)) | traceShow ("@@@", show c', show c) True = exec c (trunc (extract c') (extract c))
+--eval' c@(CDROP (CENTER _ _)) (BaryBruijn c'@(CENTER _ _)) | traceShow ("@@@", show c', show c) True = exec c (trunc (extract c') (extract c))
 
 {-
 eval' c (BaryBruijn c') | traceShow ("@@", show c', show c) True = exec c (grab c' c)
@@ -223,7 +223,7 @@ type family EqList (a :: [*]) (b :: [*]) where
   EqList a b = 'False
 type instance a == b = EqList a b
 -}
-
+{-
 data Bool' b where
   T :: Bool' True
   F :: Bool' False
@@ -247,7 +247,7 @@ instance Indexable' True (a ': shallow) (a ': shallow) where
 
 instance Indexable' (a ': shallow == deep) (a ': shallow) deep => Indexable' False (a ': shallow) (d ': deep) where
   index shallow@TCons{} (TCons _ deep) = undefined -- index shallow deep
-
+-}
 
 -- AVENUE E
 
@@ -257,19 +257,19 @@ type family Trunc (acc :: [*]) (shallow :: [*]) (deep :: [*]) :: [*] where
   Trunc acc sh sh = acc
   Trunc acc sh (d ': deep) = d ': Trunc acc sh deep
 
-class (index ~ Trunc '[] shallow deep) => TRUNC (index :: [*]) (shallow :: [*]) (deep :: [*]) | shallow index -> deep where
+class (index ~ Trunc '[] shallow deep) => TRUNC index shallow deep | shallow index -> deep where
   trunc :: (shallow ~ (a ': sh)) => DB shallow -> DB deep -> a
 
 instance ('[] ~ Trunc '[] (a ': shallow) deep, (a ': shallow) ~ deep) => TRUNC '[] (a ': shallow) deep where
-  trunc _ (TCons a _) = a
+  trunc _ (TCons a _) = trace "DONE" $ a
 
 instance ((i ': indx) ~ Trunc '[] (a ': shallow) (d ': deep), TRUNC indx (a ': shallow) deep) => TRUNC (i ': indx) (a ': shallow) (d ': deep) where
-  trunc sh (TCons _ rest) = trunc sh rest
+  trunc sh (TCons _ rest) = trace "DRILLING" $ trunc sh rest
 
 
-class TRUNC index shallow deep => TRUNC' (index :: [*]) (shallow :: [*]) (deep :: [*]) | shallow deep -> index
+--class TRUNC index shallow deep => TRUNC' index shallow deep | shallow deep -> index
 
-instance (index ~ Trunc '[] shallow deep, TRUNC index shallow deep) => TRUNC' index shallow deep
+--instance (index ~ Trunc '[] shallow deep, TRUNC index shallow deep) => TRUNC' index shallow deep
 
 
 data CONT :: [*] -> * -> * where
@@ -293,10 +293,11 @@ instance Show (CONT (a ': s) k) where
 extract :: CONT (a ': ctx) k -> DB ctx
 extract CHALT = Lepton.Nil
 extract (C0 _ c) = extract c
+--extract (C1 (CDROP _)) = error "C1 (CDROP)"
 extract (C1 (extract -> (TCons _ c))) = c
 extract (CENTER a c) = TCons a $ extract c
-extract (CDROP (CENTER a c)) = TCons a (TCons undefined (extract c))
-extract (CDROPP (CENTER a c)) = TCons a (TCons undefined (TCons undefined (extract c)))
+extract (CDROP (CENTER a c)) = TCons a (TCons (error $ show ("CDROP", c)) (extract c))
+extract (CDROPP (CENTER a c)) = TCons a (TCons (error $ show ("CDROPP-0", c)) (TCons (error $ show ("CDROPP-1", c)) (extract c)))
 
 
 exec :: CONT (a ': s) k -> a -> k
