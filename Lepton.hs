@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, RankNTypes, FlexibleInstances, UndecidableInstances, MultiParamTypeClasses, ViewPatterns, AllowAmbiguousTypes, FunctionalDependencies #-}
+{-# LANGUAGE GADTs, RankNTypes, FlexibleInstances, UndecidableInstances, MultiParamTypeClasses, ViewPatterns, AllowAmbiguousTypes #-}
 
 module Lepton where
 
@@ -124,7 +124,9 @@ eval' c (BaryVar v) = exec c v
 eval' c (BaryInt i) = exec c i
 {- ^^ expand evalB -}
 
-eval' c (BaryBruijn (C1 c')) | traceShow ("@@", show c', show c) True = exec c (trunc (extract c') (extract c))
+eval' c (BaryBruijn (C1 c')) | traceShow ("@@", show c', show c) True = exec c (trunc (x undefined extract c') (x undefined extract c))
+  where x :: a -> (a -> b) -> a -> b
+        x _ f a = f a
 --eval' c@(CDROP (CENTER _ _)) (BaryBruijn c'@(CENTER _ _)) | traceShow ("@@@", show c', show c) True = exec c (trunc (extract c') (extract c))
 
 {-
@@ -155,6 +157,8 @@ type family EqZip (deep :: [*]) (shallow :: [*]) :: Constraint where
 -- AVENUE B
 -- DeBruijnIndex [f, e, d, c, b, a] [c, b, a] = Consume [f, e, d, c (, ...)] 
 -- :kind! DeBruijnIndex '[Float, Either Int Int, Double, Char, Bool, Int] '[Char, Bool, Int]
+
+{-
 type family DBI (odeep :: [*]) (oshallow :: [*])(dacc :: [*]) (sacc :: [*]) (deep :: [*]) (shallow :: [*]) :: Constraint where
   DBI orig oshall dacc sacc (d ': deep) (s ': shallow) = DBI orig oshall (d ': dacc) (s ': sacc) deep shallow
   DBI orig oshall dacc sacc (d ': deep) '[] = DBI orig oshall (d ': dacc) sacc deep '[]
@@ -190,10 +194,10 @@ instance Consume a '[] (a ': sha) where
 
 instance ({-(ds ++ (a ': sha)) ~ deeps, -}Consume a ds deeps) => Consume a (d ': ds) (d ': deeps) where
   peel (TCons _ rest0) (TCons _ rest) = peel rest0 rest
-
+-}
 
 -- AVENUE C
-
+{-
 type family INDEX (dacc :: [*]) (sacc :: [*]) (deep :: [*]) (shallow :: [*]) :: [*] where
   INDEX dacc sacc (d ': deep) (s ': shallow) = INDEX (d ': dacc) (s ': sacc) deep shallow
   INDEX dacc sacc (d ': deep) '[] = INDEX (d ': dacc) sacc deep '[]
@@ -205,6 +209,7 @@ type DbIndex shallow deep = INDEX '[] '[] deep shallow
 class Builds (DbIndex shallow deep) => LevelDiff (shallow :: [*]) (deep :: [*]) where
   type Idx shallow deep :: [*]
   type Idx shallow deep = DbIndex shallow deep
+-}
 
 --instance (shallow ~ deep) => LevelDiff shallow deep where
 --  type Idx shallow deep = '[]
@@ -252,12 +257,16 @@ instance Indexable' (a ': shallow == deep) (a ': shallow) deep => Indexable' Fal
 -- AVENUE E
 
 -- :kind! Trunc '[] '[Char, Bool, Int] '[Float, Either Int Int, Double, Char, Bool, Int]
+-- :kind! Trunc '[] '[Float, Either Int Int, Double, Char, Bool, Int] '[Float, Either Int Int, Double, Char, Bool, Int]
+
+-- trunc (TCons 'k' Lepton.Nil) (TCons 7 $ TCons 5 $ TCons 'l' Lepton.Nil)
+-- --> 'l'
 
 type family Trunc (acc :: [*]) (shallow :: [*]) (deep :: [*]) :: [*] where
   Trunc acc sh sh = acc
   Trunc acc sh (d ': deep) = d ': Trunc acc sh deep
 
-class (index ~ Trunc '[] shallow deep) => TRUNC index shallow deep | shallow index -> deep where
+class (index ~ Trunc '[] shallow deep) => TRUNC index shallow deep where
   trunc :: (shallow ~ (a ': sh)) => DB shallow -> DB deep -> a
 
 instance ('[] ~ Trunc '[] (a ': shallow) deep, (a ': shallow) ~ deep) => TRUNC '[] (a ': shallow) deep where
@@ -291,10 +300,10 @@ instance Show (CONT (a ': s) k) where
   show (CDROPP c) = 'X' : show c
 
 extract :: CONT (a ': ctx) k -> DB ctx
+extract (C1 (CENTER _ c)) = extract c -- these neutralize
 extract CHALT = Lepton.Nil
 extract (C0 _ c) = extract c
---extract (C1 (CDROP _)) = error "C1 (CDROP)"
-extract (C1 (extract -> (TCons _ c))) = c
+--extract (C1 (extract -> (TCons _ c))) = c
 extract (CENTER a c) = TCons a $ extract c
 extract (CDROP (CENTER a c)) = TCons a (TCons (error $ show ("CDROP", c)) (extract c))
 extract (CDROPP (CENTER a c)) = TCons a (TCons (error $ show ("CDROPP-0", c)) (TCons (error $ show ("CDROPP-1", c)) (extract c)))
