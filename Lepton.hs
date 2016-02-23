@@ -294,6 +294,7 @@ data CONT :: [*] -> * -> * where
 instance Show (CONT (a ': s) k) where
   show CHALT = ""
   show (C0 _ c) = '0' : show c
+  show (C1 (CENTER _ c)) = "(1^)" L.++ show c
   show (C1 c) = '1' : show c
   show (CENTER a c) = '^' : show c
   show (CDROP c) = '/' : show c
