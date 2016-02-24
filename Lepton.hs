@@ -65,6 +65,7 @@ evalB (BaryInt i) = i
 evalB (Barylam f) = \x -> evalB (f (BaryVar x))
 --evalB (BaryBruijn (C1 a _)) = a
 evalB (BaryBruijn (C1 (CENTER a _))) = a
+evalB (BaryBruijnX (CENTER a _)) = a
 
 
 test :: (Lam f, Val f) => f '[Int]
@@ -93,12 +94,14 @@ t2 = test2
 eval' :: CONT (a ': s) k -> Baryon (a ': s) -> k
 
 -- IS THIS A BETTER WAY TO ELIMINATE (C1 (CENTER ...)) ???
---eval' (C1 c@CENTER{}) (Barylam f) | traceShow ("C1bruijn", show c) True = eval' c (f (BaryBruijnX c))
+eval' (C1 c) (Barylam f) | traceShow ("C1bruijn", show c) True = eval' c (f (BaryBruijnX c))
 
-eval' c'@(C1 c) (Barylam f) | traceShow ("C1bruijn", show c') True = eval' c (f (BaryBruijn c'))
+--eval' c'@(C1 c) (Barylam f) | traceShow ("C1bruijn", show c') True = eval' c (f (BaryBruijn c'))
   --where exec (CENTER c) b = exec c b
 {- introduce CENTER for entering deeper scope -}
 eval' c'@(C1 c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capture the stack, later just the stack pointer!
+
+eval' c'@(CENTER _ c) (Barylam f) | traceShow ("CENTERbruijn", show c) True = eval' c (f (BaryBruijnX c))
 
 
 --eval' (C1 a c) (Barylam f) = exec c (evalB (f (BaryVar a))) -- this is a gamble on the form of the control stack. Does it always hold? -- NO: CENTER can also be (see immediately below this)
@@ -106,7 +109,7 @@ eval' c'@(C1 c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capt
 
 --eval' c'@(CENTER _ c''@(C1 c)) (Barylam f) | traceShow ("CENTERbruijn", show c') True = eval' (CDROP c) (f (BaryBruijn c'))
 
-eval' c'@(CDROP (CENTER _ c''@(C1 c))) (Barylam f) | traceShow ("DROPbruijn", show c') True = eval' (CDROPP c) (f (BaryBruijn c'))
+-------eval' c'@(CDROP (CENTER _ c''@(C1 c))) (Barylam f) | traceShow ("DROPbruijn", show c') True = eval' (CDROPP c) (f (BaryBruijn c'))
 
 
 --eval' c (Barylam f) = exec c (\a -> evalB (f (BaryBruijn 0)))
