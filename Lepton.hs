@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, RankNTypes, FlexibleInstances, UndecidableInstances, MultiParamTypeClasses, ViewPatterns, BangPatterns #-}
+{-# LANGUAGE GADTs, RankNTypes, FlexibleInstances, UndecidableInstances, MultiParamTypeClasses, ViewPatterns, BangPatterns, ImpredicativeTypes #-}
 
 module Lepton where
 
@@ -7,6 +7,7 @@ import GHC.Exts
 import Debug.Trace (trace, traceShow, traceShowId)
 import Data.Type.Equality
 import qualified Data.List as L
+import Unsafe.Coerce (unsafeCoerce)
 
 class Lam f where
   --lam :: ((forall i . (DeBruijnIndex i (a ': s)) => f (a ': i)) -> f (b ': a ': s)) -> f ((a -> b) ': s)
@@ -27,7 +28,7 @@ data Baryon s where
   BaryVar :: a -> Baryon (a ': s)
   --BaryBruijn :: (DbIndex (a ': s) s' ~ idx, Consume a idx s', Builds idx) => CONT ((a -> b) ': s') k -> Baryon (a ': s)
   --BaryBruijn :: (DeBruijnIndex s (a ': s')) => CONT ((a -> b) ': s') k -> Baryon (a ': s)
-  BaryBruijn :: (TRUNC idx (a ': s') s) => CONT ((a -> b) ': s') k -> Baryon (a ': s)
+  --BaryBruijn :: (TRUNC idx (a ': s') s) => CONT ((a -> b) ': s') k -> Baryon (a ': s)
   BaryBruijnX :: (TRUNC idx (a ': s') s) => CONT (b ': a ': s') k -> Baryon (a ': s)
 
 instance Lam Baryon where
@@ -54,7 +55,7 @@ instance Show (Baryon s) where
   show (Baryapp f a) = "Baryapp (" L.++show f L.++") (" L.++show a L.++")"
   show (BaryInt i) = show i
   show (BaryVar _) = "<var>"
-  show (BaryBruijn cont) = "PPP " L.++ show cont
+  --show (BaryBruijn cont) = "PPP " L.++ show cont
   show (BaryBruijnX cont) = "PPX " L.++ show cont
 
 -- Here is our standard evaluator:
@@ -65,7 +66,7 @@ evalB (BaryVar v) = v
 evalB (BaryInt i) = i
 evalB (Barylam f) = \x -> evalB (f (BaryVar x))
 --evalB (BaryBruijn (C1 a _)) = a
-evalB (BaryBruijn (C1 (CENTER a _))) = a
+--evalB (BaryBruijn (C1 (CENTER a _))) = a
 evalB (BaryBruijnX (CENTER a _)) = a
 
 
@@ -100,9 +101,19 @@ eval' (C1 c) (Barylam f) | traceShow ("C1bruijnX", show c) True = eval' c (f (Ba
 --eval' c'@(C1 c) (Barylam f) | traceShow ("C1bruijn", show c') True = eval' c (f (BaryBruijn c'))
   --where exec (CENTER c) b = exec c b
 {- introduce CENTER for entering deeper scope -}
-eval' c'@(C1 c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capture the stack, later just the stack pointer!
+--eval' c'@(C1 c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capture the stack, later just the stack pointer!
 
-eval' c' (Barylam f) | traceShow ("CENTERbruijnX", show c') True = eval' c (f (BaryBruijnX c))
+eval' (CENTER _ c'') (Barylam f) | traceShow ("CENTERbruijnX", show c'') True = eval' ( c'') (Barylam (unsafeCoerce f))
+  --where cSTUFF :: CONT ((a -> b) ': s) k -> CONT ((a -> b) ': x ': s) k
+  --      cSTUFF = CSTUFF
+{-
+eval' c'@(CENTER a c'') (Barylam f) | traceShow ("CENTERbruijnX", show c') True = eval' c (f (BaryBruijnX c'))
+  where c = _ (BaryBruijnX c') c''
+        foo :: CONT ((a2 -> b) ': s) k -> CONT (b ': a2 ': a ': s) k
+        foo = undefined -- CDROPX
+-}
+
+eval' c' (Barylam f) | traceShow ("bruijnX", show c') True = eval' c (f (BaryBruijnX c))
   where c = CDROPX c'
         --foo :: CONT ((a -> b) : s) k -> CONT (b : a : s) k
         --foo = undefined
@@ -133,9 +144,9 @@ eval' c (BaryVar v) = exec c v
 eval' c (BaryInt i) = exec c i
 {- ^^ expand evalB -}
 
-eval' c (BaryBruijn (C1 c')) | traceShow ("@@", show c', show c) True = exec c (trunc (x undefined extract c') (x undefined extract c))
-  where x :: a -> (a -> b) -> a -> b
-        x _ f a = f a
+--eval' c (BaryBruijn (C1 c')) | traceShow ("@@", show c', show c) True = exec c (trunc (x undefined extract c') (x undefined extract c))
+--  where x :: a -> (a -> b) -> a -> b
+--        x _ f a = f a
 --eval' c@(CDROP (CENTER _ _)) (BaryBruijn c'@(CENTER _ _)) | traceShow ("@@@", show c', show c) True = exec c (trunc (extract c') (extract c))
 
 --eval' (CDROPX c) (BaryBruijnX (CDROPX c')) | traceShow ("@@X", show c', show c) True = exec c (trunc (extract c') (extract c))
@@ -303,6 +314,8 @@ data CONT :: [*] -> * -> * where
   --CDROP :: !(CONT (b ': a ': s) k) -> CONT (b ': x ': a ': s) k
   CDROPX :: !(CONT ((a' -> b) ': s) k) -> CONT (b ': a ': s) k
   --CDROPP :: !(CONT (b ': a ': s) k) -> CONT (b ': a ': x ': y ': s) k
+  CSTUFF :: CONT ((a -> b) ': s) k -> CONT ((a -> b) ': x ': s) k
+
   CHALT :: CONT '[a] a
 
 instance Show (CONT (a ': s) k) where
@@ -314,6 +327,7 @@ instance Show (CONT (a ': s) k) where
   show (CDROPX c) = 'V' : show c
   --show (CDROP c) = '/' : show c
   --show (CDROPP c) = 'X' : show c
+  show (CSTUFF c) = 'X' : show c
 
 extract :: CONT (a ': ctx) k -> DB ctx
 extract (C1 (CENTER _ c)) = extract c -- these neutralize
@@ -322,6 +336,7 @@ extract (C0 _ c) = extract c
 --extract (C1 (extract -> (TCons _ c))) = c
 extract (CENTER a c) = TCons a $ extract c
 extract (CDROPX c) = TCons (error $ show ("CDROPX", c)) $ extract c
+extract (CSTUFF c) = TCons (error $ show ("CSTUFF", c)) $ extract c
 --extract (CDROPX (CENTER a c)) = TCons (error $ show ("CDROPX", c)) $ TCons a $ extract c
 --extract (CDROP (CENTER a c)) = TCons a (TCons (error $ show ("CDROP", c)) (extract c))
 --extract (CDROP (CENTER a c)) = TCons (error $ show ("CDROP", c)) (TCons a (extract c))
