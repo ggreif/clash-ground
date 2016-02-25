@@ -300,7 +300,7 @@ data CONT :: [*] -> * -> * where
   --CENTER :: !(CONT (b ': s) k) -> CONT (b ': a ': s) k
   CENTER :: a -> !(CONT (b ': s) k) -> CONT (b ': a ': s) k
   --CDROP :: !(CONT (b ': a ': s) k) -> CONT (b ': x ': a ': s) k
-  CDROPX :: !(CONT ((a -> b) ': s) k) -> CONT (b ': a ': s) k
+  CDROPX :: !(CONT ((a' -> b) ': s) k) -> CONT (b ': a ': s) k
   --CDROPP :: !(CONT (b ': a ': s) k) -> CONT (b ': a ': x ': y ': s) k
   CHALT :: CONT '[a] a
 
