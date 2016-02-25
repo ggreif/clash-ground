@@ -94,15 +94,17 @@ t2 = test2
 eval' :: CONT (a ': s) k -> Baryon (a ': s) -> k
 
 -- IS THIS A BETTER WAY TO ELIMINATE (C1 (CENTER ...)) ???
-eval' (C1 c) (Barylam f) | traceShow ("C1bruijn", show c) True = eval' c (f (BaryBruijnX c))
+eval' (C1 c) (Barylam f) | traceShow ("C1bruijnX", show c) True = eval' c (f (BaryBruijnX c))
 
 --eval' c'@(C1 c) (Barylam f) | traceShow ("C1bruijn", show c') True = eval' c (f (BaryBruijn c'))
   --where exec (CENTER c) b = exec c b
 {- introduce CENTER for entering deeper scope -}
 eval' c'@(C1 c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capture the stack, later just the stack pointer!
 
-eval' c'@(CENTER _ c) (Barylam f) | traceShow ("CENTERbruijn", show c) True = eval' c (f (BaryBruijnX c))
-
+eval' c'@CENTER{} (Barylam f) | traceShow ("CENTERbruijnX", show c') True = eval' c (f (BaryBruijnX c))
+  where c = CDROPX c'
+        foo :: CONT ((a -> b) : s) k -> CONT (b : a : s) k
+        foo = undefined
 
 --eval' (C1 a c) (Barylam f) = exec c (evalB (f (BaryVar a))) -- this is a gamble on the form of the control stack. Does it always hold? -- NO: CENTER can also be (see immediately below this)
 
@@ -294,6 +296,7 @@ data CONT :: [*] -> * -> * where
   --CENTER :: !(CONT (b ': s) k) -> CONT (b ': a ': s) k
   CENTER :: a -> !(CONT (b ': s) k) -> CONT (b ': a ': s) k
   CDROP :: !(CONT (b ': a ': s) k) -> CONT (b ': x ': a ': s) k
+  CDROPX :: !(CONT ((a -> b) ': s) k) -> CONT (b ': a ': s) k
   CDROPP :: !(CONT (b ': a ': s) k) -> CONT (b ': a ': x ': y ': s) k
   CHALT :: CONT '[a] a
 
