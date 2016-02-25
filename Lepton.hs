@@ -320,6 +320,7 @@ extract CHALT = Lepton.Nil
 extract (C0 _ c) = extract c
 --extract (C1 (extract -> (TCons _ c))) = c
 extract (CENTER a c) = TCons a $ extract c
+extract (CDROPX (CENTER a c)) = TCons undefined $ TCons a $ extract c
 --extract (CDROP (CENTER a c)) = TCons a (TCons (error $ show ("CDROP", c)) (extract c))
 --extract (CDROP (CENTER a c)) = TCons (error $ show ("CDROP", c)) (TCons a (extract c))
 --extract (CDROPP (CENTER a c)) = TCons a (TCons (error $ show ("CDROPP-0", c)) (TCons (error $ show ("CDROPP-1", c)) (extract c)))
