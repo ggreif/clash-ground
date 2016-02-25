@@ -138,6 +138,9 @@ eval' c (BaryBruijn (C1 c')) | traceShow ("@@", show c', show c) True = exec c (
         x _ f a = f a
 --eval' c@(CDROP (CENTER _ _)) (BaryBruijn c'@(CENTER _ _)) | traceShow ("@@@", show c', show c) True = exec c (trunc (extract c') (extract c))
 
+eval' c (BaryBruijnX c') | traceShow ("@@X", show c', show c) True = exec c (trunc (extract c') (extract c))
+
+
 {-
 eval' c (BaryBruijn c') | traceShow ("@@", show c', show c) True = exec c (grab c' c)
   where grab :: Consume a s s' => CONT ((a -> b) ': s') k' -> CONT (a ': s) k -> a
@@ -296,9 +299,9 @@ data CONT :: [*] -> * -> * where
   C1 :: !(CONT (b ': a ': s) k) -> CONT ((a -> b) ': s) k
   --CENTER :: !(CONT (b ': s) k) -> CONT (b ': a ': s) k
   CENTER :: a -> !(CONT (b ': s) k) -> CONT (b ': a ': s) k
-  CDROP :: !(CONT (b ': a ': s) k) -> CONT (b ': x ': a ': s) k
+  --CDROP :: !(CONT (b ': a ': s) k) -> CONT (b ': x ': a ': s) k
   CDROPX :: !(CONT ((a -> b) ': s) k) -> CONT (b ': a ': s) k
-  CDROPP :: !(CONT (b ': a ': s) k) -> CONT (b ': a ': x ': y ': s) k
+  --CDROPP :: !(CONT (b ': a ': s) k) -> CONT (b ': a ': x ': y ': s) k
   CHALT :: CONT '[a] a
 
 instance Show (CONT (a ': s) k) where
@@ -308,8 +311,8 @@ instance Show (CONT (a ': s) k) where
   show (C1 c) = '1' : show c
   show (CENTER a c) = '^' : show c
   show (CDROPX c) = 'V' : show c
-  show (CDROP c) = '/' : show c
-  show (CDROPP c) = 'X' : show c
+  --show (CDROP c) = '/' : show c
+  --show (CDROPP c) = 'X' : show c
 
 extract :: CONT (a ': ctx) k -> DB ctx
 extract (C1 (CENTER _ c)) = extract c -- these neutralize
@@ -318,14 +321,14 @@ extract (C0 _ c) = extract c
 --extract (C1 (extract -> (TCons _ c))) = c
 extract (CENTER a c) = TCons a $ extract c
 --extract (CDROP (CENTER a c)) = TCons a (TCons (error $ show ("CDROP", c)) (extract c))
-extract (CDROP (CENTER a c)) = TCons (error $ show ("CDROP", c)) (TCons a (extract c))
-extract (CDROPP (CENTER a c)) = TCons a (TCons (error $ show ("CDROPP-0", c)) (TCons (error $ show ("CDROPP-1", c)) (extract c)))
+--extract (CDROP (CENTER a c)) = TCons (error $ show ("CDROP", c)) (TCons a (extract c))
+--extract (CDROPP (CENTER a c)) = TCons a (TCons (error $ show ("CDROPP-0", c)) (TCons (error $ show ("CDROPP-1", c)) (extract c)))
 
 
 exec :: CONT (a ': s) k -> a -> k
 
-exec (CDROP c) f = exec c f
-exec (CDROPP c) f = exec c f
+--exec (CDROP c) f = exec c f
+--exec (CDROPP c) f = exec c f
 exec (CDROPX c) f = exec c (const f)
 
 
