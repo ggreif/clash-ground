@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, RankNTypes, FlexibleInstances, UndecidableInstances, MultiParamTypeClasses, ViewPatterns, AllowAmbiguousTypes #-}
+{-# LANGUAGE GADTs, RankNTypes, FlexibleInstances, UndecidableInstances, MultiParamTypeClasses, ViewPatterns, BangPatterns #-}
 
 module Lepton where
 
@@ -102,7 +102,7 @@ eval' (C1 c) (Barylam f) | traceShow ("C1bruijnX", show c) True = eval' c (f (Ba
 {- introduce CENTER for entering deeper scope -}
 eval' c'@(C1 c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capture the stack, later just the stack pointer!
 
-eval' c'@CENTER{} (Barylam f) | traceShow ("CENTERbruijnX", show c') True = eval' c (f (BaryBruijnX c))
+eval' c' (Barylam f) | traceShow ("CENTERbruijnX", show c') True = eval' c (f (BaryBruijnX c))
   where c = CDROPX c'
         --foo :: CONT ((a -> b) : s) k -> CONT (b : a : s) k
         --foo = undefined
@@ -138,6 +138,7 @@ eval' c (BaryBruijn (C1 c')) | traceShow ("@@", show c', show c) True = exec c (
         x _ f a = f a
 --eval' c@(CDROP (CENTER _ _)) (BaryBruijn c'@(CENTER _ _)) | traceShow ("@@@", show c', show c) True = exec c (trunc (extract c') (extract c))
 
+--eval' (CDROPX c) (BaryBruijnX (CDROPX c')) | traceShow ("@@X", show c', show c) True = exec c (trunc (extract c') (extract c))
 eval' c (BaryBruijnX c') | traceShow ("@@X", show c', show c) True = exec c (trunc (extract c') (extract c))
 
 
@@ -320,7 +321,8 @@ extract CHALT = Lepton.Nil
 extract (C0 _ c) = extract c
 --extract (C1 (extract -> (TCons _ c))) = c
 extract (CENTER a c) = TCons a $ extract c
-extract (CDROPX (CENTER a c)) = TCons undefined $ TCons a $ extract c
+extract (CDROPX c) = TCons (error $ show ("CDROPX", c)) $ extract c
+--extract (CDROPX (CENTER a c)) = TCons (error $ show ("CDROPX", c)) $ TCons a $ extract c
 --extract (CDROP (CENTER a c)) = TCons a (TCons (error $ show ("CDROP", c)) (extract c))
 --extract (CDROP (CENTER a c)) = TCons (error $ show ("CDROP", c)) (TCons a (extract c))
 --extract (CDROPP (CENTER a c)) = TCons a (TCons (error $ show ("CDROPP-0", c)) (TCons (error $ show ("CDROPP-1", c)) (extract c)))
@@ -330,19 +332,19 @@ exec :: CONT (a ': s) k -> a -> k
 
 --exec (CDROP c) f = exec c f
 --exec (CDROPP c) f = exec c f
-exec (CDROPX c) f = exec c (const f)
+exec (CDROPX c) !f = exec c (const f)
 
 
-exec (C1 (CENTER a c)) f = exec c (f a) -- (DEM)
+exec (C1 (CENTER a c)) !f = exec c (f a) -- (DEM)
 
 
-exec (C0 f c) a = eval' (C1 (CENTER a c)) f
+exec (C0 f c) !a = eval' (C1 (CENTER a c)) f
 {- Obi-Wan helps -}
-exec (C0 f c) a = exec (C1 (CENTER a c)) (eval f)
+exec (C0 f c) !a = exec (C1 (CENTER a c)) (eval f)
   --where exec (C1 a c) f = exec c (f a) -- see above
 {- help me Obi-Wan! (create C, amend exec) -}
-exec (C0 f c) a = exec c (eval f a)
-exec CHALT a = a
+exec (C0 f c) !a = exec c (eval f a)
+exec CHALT !a = a
 
-exec (CENTER _ c) b = exec c b
+exec (CENTER _ c) !b = exec c b
 
