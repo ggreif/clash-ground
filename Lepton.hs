@@ -55,6 +55,7 @@ instance Show (Baryon s) where
   show (BaryInt i) = show i
   show (BaryVar _) = "<var>"
   show (BaryBruijn cont) = "PPP " L.++ show cont
+  show (BaryBruijnX cont) = "PPX " L.++ show cont
 
 -- Here is our standard evaluator:
 --
@@ -103,8 +104,8 @@ eval' c'@(C1 c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capt
 
 eval' c'@CENTER{} (Barylam f) | traceShow ("CENTERbruijnX", show c') True = eval' c (f (BaryBruijnX c))
   where c = CDROPX c'
-        foo :: CONT ((a -> b) : s) k -> CONT (b : a : s) k
-        foo = undefined
+        --foo :: CONT ((a -> b) : s) k -> CONT (b : a : s) k
+        --foo = undefined
 
 --eval' (C1 a c) (Barylam f) = exec c (evalB (f (BaryVar a))) -- this is a gamble on the form of the control stack. Does it always hold? -- NO: CENTER can also be (see immediately below this)
 
@@ -306,6 +307,7 @@ instance Show (CONT (a ': s) k) where
   show (C1 (CENTER _ c)) = "(1^)" L.++ show c
   show (C1 c) = '1' : show c
   show (CENTER a c) = '^' : show c
+  show (CDROPX c) = 'V' : show c
   show (CDROP c) = '/' : show c
   show (CDROPP c) = 'X' : show c
 
@@ -324,6 +326,7 @@ exec :: CONT (a ': s) k -> a -> k
 
 exec (CDROP c) f = exec c f
 exec (CDROPP c) f = exec c f
+exec (CDROPX c) f = exec c (const f)
 
 
 exec (C1 (CENTER a c)) f = exec c (f a) -- (DEM)
