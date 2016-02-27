@@ -26,7 +26,9 @@ class Eval f where
 
 data Baryon s where
   --Barylam :: ((forall i . (DeBruijnIndex i (a ': s)) => Baryon (a ': i)) -> Baryon (b ': a ': s)) -> Baryon ((a -> b) ': s)
-  Barylam :: ((forall i . (TRUNC (Trunc '[] (a ': s) i) (a ': s) i) => Baryon (a ': i)) -> Baryon (b ': a ': s)) -> Baryon ((a -> b) ': s)
+  Barylam :: ((forall i . TRUNC (Trunc '[] (a ': s) i) (a ': s) i => Baryon (a ': i)) -> Baryon (b ': a ': s)) -> Baryon ((a -> b) ': s)
+  BaryPush :: ((forall i . (TRUNC (Trunc '[] (a ': x ': s) i) (a ': x ': s) i) => Baryon (a ': i)) -> Baryon (b ': a ': x ': s)) -> Baryon ((a -> b) ': s)
+
   Baryapp :: Baryon ((a -> b) ': s) -> Baryon (a ': s) -> Baryon (b ': s)
   BaryInt :: Int -> Baryon (Int ': s)
   BaryVar :: a -> Baryon (a ': s)
@@ -84,7 +86,7 @@ test = id `app` (const `app` fortytwo `app` seven)
 t0 :: Baryon '[Int]
 t0 = test
 
-test1 = (lam (\x0 -> lam (\x1 -> x1)) `app` int 2) `app` int 1
+test1 = (lam (\x0 -> lam (\x1 -> (trace "%%" x1))) `app` int 2) `app` int 1
 
 t1 :: Baryon '[Int]
 t1 = test1
@@ -107,13 +109,34 @@ eval' (C1 c) (Barylam f) | traceShow ("C1bruijnX", show c) True = eval' c (f (Ba
 {- introduce CENTER for entering deeper scope -}
 --eval' c'@(C1 c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capture the stack, later just the stack pointer!
 
-eval' c'@(CENTER _ c'') (Barylam f) | traceShow ("CENTERbruijnX", show c'') True = eval' ( c'') (Barylam (relevel f))
+
+
+eval' c'@(CENTER _ c'') (Barylam f) | traceShow ("CENTERbruijnX!!", show c'') True = eval' c'' (BaryPush f) --(BaryVar $ \a -> evalB (f (BaryVar a)))
+-- exec c (\a -> evalB (f (BaryVar a)))
+
+-- SCETCH: BaryPush (evalB (f (BaryVar a))) === (BaryVar $ \a -> evalB (f (BaryVar a)))
+--         BaryPush' f
+
+eval' c'@(CENTER _ c'') (Barylam f) | traceShow ("CENTERbruijnX", show c'') False = eval' ( c'') (Barylam (relevel f))
   where relevel :: ((forall (i :: [*]) . TRUNC (Trunc '[] (a ': x ': s) i) (a ': x ': s) i => Baryon (a ': i)) -> Baryon (b ': a ': x ': s))
-                -> ((forall (i :: [*]) . TRUNC (Trunc '[] (a ': s) i) (a ': s) i => Baryon (a ': i)) -> Baryon (b ': a ': s))
-        relevel f bary = case rebase bary c' of
-                           (Dict, _) -> undefined
+                -> ((forall (i :: [*]) . TRUNC (Trunc '[] (a      ': s) i) (a      ': s) i => Baryon (a ': i)) -> Baryon (b ': a      ': s))
+        relevel f bary = undefined --case rebase bary c' of
+                           --(Dict, bla) -> bla
   --where cSTUFF :: CONT ((a -> b) ': s) k -> CONT ((a -> b) ': x ': s) k
   --      cSTUFF = CSTUFF
+
+--So we want:
+
+--HAVING
+-- f in a shallow (a ': x ': s) and forall deep
+--be transported to
+-- f' in a shallow (a ': s) and forall deep
+
+
+
+
+
+
 {-
 eval' c'@(CENTER a c'') (Barylam f) | traceShow ("CENTERbruijnX", show c') True = eval' c (f (BaryBruijnX c'))
   where c = _ (BaryBruijnX c') c''
@@ -304,6 +327,13 @@ class (index ~ Trunc '[] shallow deep) => TRUNC index shallow deep where
   --rebase :: (shallow ~ (a ': x ': s)) => DB shallow -> DB deep -> Dict (TRUNC (Trunc '[] (a : s) deep) (a : s) deep)
   rebase :: (shallow ~ (a ': x ': s)) => Baryon (a ': s) -> CONT deep k -> (Dict (TRUNC (Trunc '[] (a ': s) deep) (a ': s) deep), Baryon (a ': s))
 
+  shorten :: (shallow ~ (a2 ': a1 ': s1)) => (Baryon (a2 ': deep)
+                  -> Baryon (b1 ': a2 ': a1 ': s1))
+                 -> (forall (i :: [*]).
+                     TRUNC (Trunc '[] (a2 ': s1) i) (a2 ': s1) i =>
+                     Baryon (a2 ': i))
+                 -> Baryon (b1 ': a2 ': s1)
+
 instance ('[] ~ Trunc '[] (a ': shallow) deep, (a ': shallow) ~ deep) => TRUNC '[] (a ': shallow) deep where
   trunc _ (TCons a _) = trace "DONE" $ a
 
@@ -325,7 +355,8 @@ data CONT :: [*] -> * -> * where
   --CDROP :: !(CONT (b ': a ': s) k) -> CONT (b ': x ': a ': s) k
   CDROPX :: !(CONT ((a' -> b) ': s) k) -> CONT (b ': a ': s) k
   --CDROPP :: !(CONT (b ': a ': s) k) -> CONT (b ': a ': x ': y ': s) k
-  CSTUFF :: CONT ((a -> b) ': s) k -> CONT ((a -> b) ': x ': s) k
+  --CSTUFF :: CONT ((a -> b) ': s) k -> CONT ((a -> b) ': x ': s) k
+  CFUN :: !(CONT ((a' -> b) ': s) k) -> CONT ((a -> b) ': s) k
 
   CHALT :: CONT '[a] a
 
@@ -338,7 +369,7 @@ instance Show (CONT (a ': s) k) where
   show (CDROPX c) = 'V' : show c
   --show (CDROP c) = '/' : show c
   --show (CDROPP c) = 'X' : show c
-  show (CSTUFF c) = 'X' : show c
+  --show (CSTUFF c) = 'X' : show c
 
 extract :: CONT (a ': ctx) k -> DB ctx
 extract (C1 (CENTER _ c)) = extract c -- these neutralize
@@ -346,8 +377,9 @@ extract CHALT = Lepton.Nil
 extract (C0 _ c) = extract c
 --extract (C1 (extract -> (TCons _ c))) = c
 extract (CENTER a c) = TCons a $ extract c
+--extract (CDROPX c) = TCons _ $ extract c
 extract (CDROPX c) = TCons (error $ show ("CDROPX", c)) $ extract c
-extract (CSTUFF c) = TCons (error $ show ("CSTUFF", c)) $ extract c
+--extract (CSTUFF c) = TCons (error $ show ("CSTUFF", c)) $ extract c
 --extract (CDROPX (CENTER a c)) = TCons (error $ show ("CDROPX", c)) $ TCons a $ extract c
 --extract (CDROP (CENTER a c)) = TCons a (TCons (error $ show ("CDROP", c)) (extract c))
 --extract (CDROP (CENTER a c)) = TCons (error $ show ("CDROP", c)) (TCons a (extract c))
