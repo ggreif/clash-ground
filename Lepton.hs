@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, RankNTypes, FlexibleInstances, UndecidableInstances, MultiParamTypeClasses, ViewPatterns, BangPatterns, ImpredicativeTypes #-}
+{-# LANGUAGE GADTs, RankNTypes, FlexibleInstances, UndecidableInstances, MultiParamTypeClasses, ViewPatterns, BangPatterns #-}
 
 module Lepton where
 
@@ -107,10 +107,10 @@ eval' (C1 c) (Barylam f) | traceShow ("C1bruijnX", show c) True = eval' c (f (Ba
 {- introduce CENTER for entering deeper scope -}
 --eval' c'@(C1 c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capture the stack, later just the stack pointer!
 
-eval' (CENTER _ c'') (Barylam f) | traceShow ("CENTERbruijnX", show c'') True = eval' ( c'') (Barylam (relevel f))
+eval' c'@(CENTER _ c'') (Barylam f) | traceShow ("CENTERbruijnX", show c'') True = eval' ( c'') (Barylam (relevel f))
   where relevel :: ((forall (i :: [*]) . TRUNC (Trunc '[] (a ': x ': s) i) (a ': x ': s) i => Baryon (a ': i)) -> Baryon (b ': a ': x ': s))
                 -> ((forall (i :: [*]) . TRUNC (Trunc '[] (a ': s) i) (a ': s) i => Baryon (a ': i)) -> Baryon (b ': a ': s))
-        relevel f bary = case rebase bary of
+        relevel f bary = case rebase bary c' of
                            (Dict, _) -> undefined
   --where cSTUFF :: CONT ((a -> b) ': s) k -> CONT ((a -> b) ': x ': s) k
   --      cSTUFF = CSTUFF
@@ -302,7 +302,7 @@ class (index ~ Trunc '[] shallow deep) => TRUNC index shallow deep where
   trunc :: (shallow ~ (a ': sh)) => DB shallow -> DB deep -> a
   --rebase :: TRUNC (Trunc '[] (a2 : a1 : s1) i) (a2 : a1 : s1) i => Dict (TRUNC (Trunc '[] (a2 : s1) i) (a2 : s1) i)
   --rebase :: (shallow ~ (a ': x ': s)) => DB shallow -> DB deep -> Dict (TRUNC (Trunc '[] (a : s) deep) (a : s) deep)
-  rebase :: (shallow ~ (a ': x ': s)) => Baryon (a ': s) -> CONT deep k -> (Dict (TRUNC (Trunc '[] (a : s) deep) (a : s) deep), Baryon (a ': s))
+  rebase :: (shallow ~ (a ': x ': s)) => Baryon (a ': s) -> CONT deep k -> (Dict (TRUNC (Trunc '[] (a ': s) deep) (a ': s) deep), Baryon (a ': s))
 
 instance ('[] ~ Trunc '[] (a ': shallow) deep, (a ': shallow) ~ deep) => TRUNC '[] (a ': shallow) deep where
   trunc _ (TCons a _) = trace "DONE" $ a
