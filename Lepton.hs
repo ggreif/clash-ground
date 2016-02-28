@@ -27,7 +27,7 @@ class Eval f where
 data Baryon s where
   --Barylam :: ((forall i . (DeBruijnIndex i (a ': s)) => Baryon (a ': i)) -> Baryon (b ': a ': s)) -> Baryon ((a -> b) ': s)
   Barylam :: ((forall i . TRUNC (Trunc '[] (a ': s) i) (a ': s) i => Baryon (a ': i)) -> Baryon (b ': a ': s)) -> Baryon ((a -> b) ': s)
-  BaryPush :: ((forall i . (TRUNC (Trunc '[] (a ': x ': s) i) (a ': x ': s) i) => Baryon (a ': i)) -> Baryon (b ': a ': x ': s)) -> Baryon ((a -> b) ': s)
+  BaryPush :: ((forall i . (TRUNC (Trunc '[] (a ': x ': s) i) (a ': x ': s) i) => Baryon (a ': i)) -> Baryon (b ': a ': x ': s)) -> x -> Baryon ((a -> b) ': s)
 
   Baryapp :: Baryon ((a -> b) ': s) -> Baryon (a ': s) -> Baryon (b ': s)
   BaryInt :: Int -> Baryon (Int ': s)
@@ -63,7 +63,7 @@ instance Show (Baryon s) where
   show (BaryVar _) = "<var>"
   --show (BaryBruijn cont) = "PPP " L.++ show cont
   show (BaryBruijnX cont) = "PPX " L.++ show cont
-  show (BaryPush f) = "BaryPush f"
+  show (BaryPush f x) = "BaryPush f"
 
 -- Here is our standard evaluator:
 --
@@ -75,7 +75,7 @@ evalB (Barylam f) = \x -> evalB (f (BaryVar x))
 --evalB (BaryBruijn (C1 a _)) = a
 --evalB (BaryBruijn (C1 (CENTER a _))) = a
 evalB (BaryBruijnX (CENTER a _)) = a
-evalB (BaryPush f) = \x -> evalB (f (BaryVar x))
+evalB (BaryPush f _) = \x -> evalB (f (BaryVar x))
 
 
 test :: (Lam f, Val f) => f '[Int]
@@ -113,7 +113,7 @@ eval' (C1 c) (Barylam f) | traceShow ("C1bruijnX", show c) True = eval' c (f (Ba
 
 
 
-eval' c'@(CENTER _ c'') (Barylam f) | traceShow ("CENTERbruijnX!!", show c'') True = eval' c'' (BaryPush f) --(BaryVar $ \a -> evalB (f (BaryVar a)))
+eval' c'@(CENTER x c'') (Barylam f) | traceShow ("CENTERbruijnX!!", show c'') True = eval' c'' (BaryPush f x) --(BaryVar $ \a -> evalB (f (BaryVar a)))
 -- exec c (\a -> evalB (f (BaryVar a)))
 
 -- SCETCH: BaryPush (evalB (f (BaryVar a))) === (BaryVar $ \a -> evalB (f (BaryVar a)))
@@ -162,6 +162,18 @@ eval' c' (Barylam f) | traceShow ("bruijnX", show c') True = eval' c (f (BaryBru
 --eval' c (Barylam f) = exec c (\a -> evalB (f (BaryBruijn 0)))
 {- can we use (DEM) ? -}
 eval' c (Barylam f) | traceShow ("VAR -----> ", show c) True = exec c (\a -> evalB (f (BaryVar a)))
+
+
+
+--- BARYPUSH
+
+eval' c@(C1 c''@(CENTER a c')) p@(BaryPush f x) | traceShow ("PUSH -----> ", show c) True = eval' (c2 ) (f (BaryBruijnX (CENTER a (CENTER x c'))))
+  where c2 = (CENTER a (CENTER x c'))
+
+eval' c@(C1 (CENTER a c')) p@(BaryPush f _) | traceShow ("PUSH -----> ", show c) True = eval' (C2 c') (f (BaryVar a))
+
+--eval' c@(C1 (CENTER a c')) (BaryPush f) | traceShow ("PUSH -----> ", show c) True = exec c' (evalB (f (eval' $ C1 (CENTER a CHALT) )))
+eval' c (BaryPush f _) | traceShow ("PUSH -----> ", show c) True = exec c (\a -> evalB (f (BaryVar a)))
 
 
 
@@ -358,7 +370,7 @@ data CONT :: [*] -> * -> * where
   CDROPX :: !(CONT ((a' -> b) ': s) k) -> CONT (b ': a ': s) k
   --CDROPP :: !(CONT (b ': a ': s) k) -> CONT (b ': a ': x ': y ': s) k
   --CSTUFF :: CONT ((a -> b) ': s) k -> CONT ((a -> b) ': x ': s) k
-  CFUN :: !(CONT ((a' -> b) ': s) k) -> CONT ((a -> b) ': s) k
+  C2 :: CONT (b2 ': s3) k -> CONT (b2 ': y ': x ': s3) k
 
   CHALT :: CONT '[a] a
 
@@ -367,6 +379,7 @@ instance Show (CONT (a ': s) k) where
   show (C0 _ c) = '0' : show c
   show (C1 (CENTER _ c)) = "(1^)" L.++ show c
   show (C1 c) = '1' : show c
+  show (C2 c) = '2' : show c
   show (CENTER a c) = '^' : show c
   show (CDROPX c) = 'V' : show c
   --show (CDROP c) = '/' : show c
@@ -389,6 +402,8 @@ extract (CDROPX c) = TCons (error $ show ("CDROPX", c)) $ extract c
 
 
 exec :: CONT (a ': s) k -> a -> k
+
+exec (C2 c) !f = exec c f
 
 --exec (CDROP c) f = exec c f
 --exec (CDROPP c) f = exec c f
