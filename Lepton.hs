@@ -87,6 +87,12 @@ test1a = lam (\x0 -> lam (\x1 -> lam (\x2 -> x2))) `app` int 3 `app` int 2 `app`
 t1a :: Baryon '[Int]
 t1a = test1a
 
+test1b = lam (\x0 -> lam (\x1 -> lam (\x2 -> lam (\x3 -> x3)))) `app` int 4 `app` int 3 `app` int 2 `app` int 111
+
+t1b :: Baryon '[Int]
+t1b = test1b
+
+
 test2 = lam (\x0 -> lam (\_ -> lam (\x -> x0))) `app` int 2 `app` int 1 `app` int 0
 
 t2 :: Baryon '[Int]
@@ -113,23 +119,15 @@ eval' c'@(C1 c) (Barylam f) | traceShow ("C1bruijnX", show c') True = eval' c (f
 eval' c@(CENTER x (C1 (CENTER a c'))) (Barylam f) | traceShow ("CENTERbruijnX", show c) True = eval' c2 (f (BaryBruijnX c2))
   where c2 = CENTER a (CENTER x c') -- bubble x down
 
-
-
 eval' c@(CENTER y (CENTER x (C1 (CENTER a c')))) (Barylam f) | traceShow ("CENTERbruijnX!!", show c) True = eval' c2 (f (BaryBruijnX c2))
   where c2 = CENTER a (CENTER y (CENTER x c')) -- bubble x, y down
 
+eval' c@(CENTER z (CENTER y (CENTER x (C1 (CENTER a c'))))) (Barylam f) | traceShow ("CENTERbruijnX!!!", show c) True = eval' c2 (f (BaryBruijnX c2))
+  where c2 = CENTER a (CENTER z (CENTER y (CENTER x c'))) -- bubble x, y, z down
+
 
 eval' c' (Barylam f) | traceShow ("bruijnX", show c') True = eval' c (f (BaryBruijnX c))
-  where c = CDROPX c'
-        --foo :: CONT ((a -> b) : s) k -> CONT (b : a : s) k
-        --foo = undefined
-
---eval' (C1 a c) (Barylam f) = exec c (evalB (f (BaryVar a))) -- this is a gamble on the form of the control stack. Does it always hold? -- NO: CENTER can also be (see immediately below this)
-
-
---eval' c'@(CENTER _ c''@(C1 c)) (Barylam f) | traceShow ("CENTERbruijn", show c') True = eval' (CDROP c) (f (BaryBruijn c'))
-
--------eval' c'@(CDROP (CENTER _ c''@(C1 c))) (Barylam f) | traceShow ("DROPbruijn", show c') True = eval' (CDROPP c) (f (BaryBruijn c'))
+  where c = CDROPX c' -- EVIL! see above cases how to eliminate CDROPX
 
 
 --eval' c (Barylam f) = exec c (\a -> evalB (f (BaryBruijn 0)))
