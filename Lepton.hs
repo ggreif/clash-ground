@@ -63,6 +63,7 @@ instance Show (Baryon s) where
   show (BaryVar _) = "<var>"
   --show (BaryBruijn cont) = "PPP " L.++ show cont
   show (BaryBruijnX cont) = "PPX " L.++ show cont
+  show (BaryPush f) = "BaryPush f"
 
 -- Here is our standard evaluator:
 --
@@ -74,6 +75,7 @@ evalB (Barylam f) = \x -> evalB (f (BaryVar x))
 --evalB (BaryBruijn (C1 a _)) = a
 --evalB (BaryBruijn (C1 (CENTER a _))) = a
 evalB (BaryBruijnX (CENTER a _)) = a
+evalB (BaryPush f) = \x -> evalB (f (BaryVar x))
 
 
 test :: (Lam f, Val f) => f '[Int]
