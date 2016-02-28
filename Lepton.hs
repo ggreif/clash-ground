@@ -68,12 +68,11 @@ instance Show (Baryon s) where
 -- Here is our standard evaluator:
 --
 evalB :: Baryon (a ': s) -> a
+evalB _ | True = error "don't do evalB!"
 evalB (f `Baryapp` a) = evalB f $ evalB a
 evalB (BaryVar v) = v
 evalB (BaryInt i) = i
 evalB (Barylam f) = \x -> evalB (f (BaryVar x))
---evalB (BaryBruijn (C1 a _)) = a
---evalB (BaryBruijn (C1 (CENTER a _))) = a
 evalB (BaryBruijnX (CENTER a _)) = a
 evalB (BaryPush f _) = \x -> evalB (f (BaryVar x))
 
@@ -92,6 +91,11 @@ test1 = (lam (\x0 -> lam (\x1 -> (trace "%%" x1))) `app` int 2) `app` int 1
 
 t1 :: Baryon '[Int]
 t1 = test1
+
+test1a = lam (\x0 -> lam (\x1 -> lam (\x2 -> x2))) `app` int 3 `app` int 2 `app` int 11
+
+t1a :: Baryon '[Int]
+t1a = test1a
 
 test2 = lam (\x0 -> lam (\_ -> lam (\x -> x0))) `app` int 2 `app` int 1 `app` int 0
 
@@ -170,10 +174,10 @@ eval' c (Barylam f) | traceShow ("VAR -----> ", show c) True = exec c (\a -> eva
 eval' c@(C1 c''@(CENTER a c')) p@(BaryPush f x) | traceShow ("PUSH -----> ", show c) True = eval' (c2 ) (f (BaryBruijnX (CENTER a (CENTER x c'))))
   where c2 = (CENTER a (CENTER x c'))
 
-eval' c@(C1 (CENTER a c')) p@(BaryPush f _) | traceShow ("PUSH -----> ", show c) True = eval' (C2 c') (f (BaryVar a))
+--eval' c@(C1 (CENTER a c')) p@(BaryPush f _) | traceShow ("PUSH -----> ", show c) True = eval' (C2 c') (f (BaryVar a))
 
 --eval' c@(C1 (CENTER a c')) (BaryPush f) | traceShow ("PUSH -----> ", show c) True = exec c' (evalB (f (eval' $ C1 (CENTER a CHALT) )))
-eval' c (BaryPush f _) | traceShow ("PUSH -----> ", show c) True = exec c (\a -> evalB (f (BaryVar a)))
+eval' c (BaryPush f _) | traceShow ("PUSH VAR -----> ", show c) True = exec c (\a -> evalB (f (BaryVar a)))
 
 
 
@@ -366,11 +370,8 @@ data CONT :: [*] -> * -> * where
   C1 :: !(CONT (b ': a ': s) k) -> CONT ((a -> b) ': s) k
   --CENTER :: !(CONT (b ': s) k) -> CONT (b ': a ': s) k
   CENTER :: a -> !(CONT (b ': s) k) -> CONT (b ': a ': s) k
-  --CDROP :: !(CONT (b ': a ': s) k) -> CONT (b ': x ': a ': s) k
   CDROPX :: !(CONT ((a' -> b) ': s) k) -> CONT (b ': a ': s) k
-  --CDROPP :: !(CONT (b ': a ': s) k) -> CONT (b ': a ': x ': y ': s) k
-  --CSTUFF :: CONT ((a -> b) ': s) k -> CONT ((a -> b) ': x ': s) k
-  C2 :: CONT (b2 ': s3) k -> CONT (b2 ': y ': x ': s3) k
+--  C2 :: CONT (b2 ': s3) k -> CONT (b2 ': y ': x ': s3) k
 
   CHALT :: CONT '[a] a
 
@@ -379,12 +380,8 @@ instance Show (CONT (a ': s) k) where
   show (C0 _ c) = '0' : show c
   show (C1 (CENTER _ c)) = "(1^)" L.++ show c
   show (C1 c) = '1' : show c
-  show (C2 c) = '2' : show c
   show (CENTER a c) = '^' : show c
   show (CDROPX c) = 'V' : show c
-  --show (CDROP c) = '/' : show c
-  --show (CDROPP c) = 'X' : show c
-  --show (CSTUFF c) = 'X' : show c
 
 extract :: CONT (a ': ctx) k -> DB ctx
 extract (C1 (CENTER _ c)) = extract c -- these neutralize
@@ -392,21 +389,15 @@ extract CHALT = Lepton.Nil
 extract (C0 _ c) = extract c
 --extract (C1 (extract -> (TCons _ c))) = c
 extract (CENTER a c) = TCons a $ extract c
---extract (CDROPX c) = TCons _ $ extract c
 extract (CDROPX c) = TCons (error $ show ("CDROPX", c)) $ extract c
---extract (CSTUFF c) = TCons (error $ show ("CSTUFF", c)) $ extract c
---extract (CDROPX (CENTER a c)) = TCons (error $ show ("CDROPX", c)) $ TCons a $ extract c
---extract (CDROP (CENTER a c)) = TCons a (TCons (error $ show ("CDROP", c)) (extract c))
---extract (CDROP (CENTER a c)) = TCons (error $ show ("CDROP", c)) (TCons a (extract c))
---extract (CDROPP (CENTER a c)) = TCons a (TCons (error $ show ("CDROPP-0", c)) (TCons (error $ show ("CDROPP-1", c)) (extract c)))
+
+
 
 
 exec :: CONT (a ': s) k -> a -> k
 
-exec (C2 c) !f = exec c f
+--exec (C2 c) !f = exec c f
 
---exec (CDROP c) f = exec c f
---exec (CDROPP c) f = exec c f
 exec (CDROPX c) !f = exec c (const f)
 
 
