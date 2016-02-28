@@ -23,9 +23,8 @@ class Eval f where
   eval :: f (a ': s) -> a
 
 data Baryon s where
-  --Barylam :: ((forall i . (DeBruijnIndex i (a ': s)) => Baryon (a ': i)) -> Baryon (b ': a ': s)) -> Baryon ((a -> b) ': s)
   Barylam :: ((forall i . TRUNC (Trunc '[] (a ': s) i) (a ': s) i => Baryon (a ': i)) -> Baryon (b ': a ': s)) -> Baryon ((a -> b) ': s)
-  BaryPush :: ((forall i . (TRUNC (Trunc '[] (a ': x ': s) i) (a ': x ': s) i) => Baryon (a ': i)) -> Baryon (b ': a ': x ': s)) -> x -> Baryon ((a -> b) ': s)
+  --BaryPush :: ((forall i . (TRUNC (Trunc '[] (a ': x ': s) i) (a ': x ': s) i) => Baryon (a ': i)) -> Baryon (b ': a ': x ': s)) -> x -> Baryon ((a -> b) ': s)
 
   Baryapp :: Baryon ((a -> b) ': s) -> Baryon (a ': s) -> Baryon (b ': s)
   BaryInt :: Int -> Baryon (Int ': s)
@@ -57,7 +56,7 @@ instance Show (Baryon s) where
   show (BaryInt i) = show i
   show (BaryVar _) = "<var>"
   show (BaryBruijnX cont) = "PPX " L.++ show cont
-  show (BaryPush f x) = "BaryPush f"
+  --show (BaryPush f x) = "BaryPush f"
 
 -- Here is our standard evaluator:
 --
@@ -68,7 +67,7 @@ evalB (BaryVar v) = v
 evalB (BaryInt i) = i
 evalB (Barylam f) = \x -> evalB (f (BaryVar x))
 evalB (BaryBruijnX (CENTER a _)) = a
-evalB (BaryPush f _) = \x -> evalB (f (BaryVar x))
+--evalB (BaryPush f _) = \x -> evalB (f (BaryVar x))
 
 
 test :: (Lam f, Val f) => f '[Int]
@@ -102,7 +101,7 @@ t2 = test2
 eval' :: CONT (a ': s) k -> Baryon (a ': s) -> k
 
 -- IS THIS A BETTER WAY TO ELIMINATE (C1 (CENTER ...)) ???
-eval' (C1 c) (Barylam f) | traceShow ("C1bruijnX", show c) True = eval' c (f (BaryBruijnX c))
+eval' c'@(C1 c) (Barylam f) | traceShow ("C1bruijnX", show c') True = eval' c (f (BaryBruijnX c))
 
 --eval' c'@(C1 c) (Barylam f) | traceShow ("C1bruijn", show c') True = eval' c (f (BaryBruijn c'))
   --where exec (CENTER c) b = exec c b
@@ -111,38 +110,20 @@ eval' (C1 c) (Barylam f) | traceShow ("C1bruijnX", show c) True = eval' c (f (Ba
 
 
 
-eval' c'@(CENTER x c'') (Barylam f) | traceShow ("CENTERbruijnX!!", show c'') False = eval' c'' (BaryPush f x) --(BaryVar $ \a -> evalB (f (BaryVar a)))
+
+
+
+eval' c@(CENTER x (C1 (CENTER a c'))) (Barylam f) | traceShow ("CENTERbruijnX!!", show c) True = eval' c2 (f (BaryBruijnX c2))
+  where c2 = CENTER a (CENTER x c')
+
+
+--eval' (CENTER x c''@(C1 CENTER{})) (Barylam f) | traceShow ("CENTERbruijnX!!", show c'') True = eval' c'' (BaryPush f x) --(BaryVar $ \a -> evalB (f (BaryVar a)))
 -- exec c (\a -> evalB (f (BaryVar a)))
 
 -- SCETCH: BaryPush (evalB (f (BaryVar a))) === (BaryVar $ \a -> evalB (f (BaryVar a)))
 --         BaryPush' f
 
-eval' c'@(CENTER _ c'') (Barylam f) | traceShow ("CENTERbruijnX", show c'') False = eval' ( c'') (Barylam (relevel f))
-  where relevel :: ((forall (i :: [*]) . TRUNC (Trunc '[] (a ': x ': s) i) (a ': x ': s) i => Baryon (a ': i)) -> Baryon (b ': a ': x ': s))
-                -> ((forall (i :: [*]) . TRUNC (Trunc '[] (a      ': s) i) (a      ': s) i => Baryon (a ': i)) -> Baryon (b ': a      ': s))
-        relevel f bary = undefined --case rebase bary c' of
-                           --(Dict, bla) -> bla
-  --where cSTUFF :: CONT ((a -> b) ': s) k -> CONT ((a -> b) ': x ': s) k
-  --      cSTUFF = CSTUFF
 
---So we want:
-
---HAVING
--- f in a shallow (a ': x ': s) and forall deep
---be transported to
--- f' in a shallow (a ': s) and forall deep
-
-
-
-
-
-
-{-
-eval' c'@(CENTER a c'') (Barylam f) | traceShow ("CENTERbruijnX", show c') True = eval' c (f (BaryBruijnX c'))
-  where c = _ (BaryBruijnX c') c''
-        foo :: CONT ((a2 -> b) ': s) k -> CONT (b ': a2 ': a ': s) k
-        foo = undefined -- CDROPX
--}
 
 eval' c' (Barylam f) | traceShow ("bruijnX", show c') True = eval' c (f (BaryBruijnX c))
   where c = CDROPX c'
@@ -162,17 +143,17 @@ eval' c' (Barylam f) | traceShow ("bruijnX", show c') True = eval' c (f (BaryBru
 eval' c (Barylam f) | traceShow ("VAR -----> ", show c) True = exec c (\a -> evalB (f (BaryVar a)))
 
 
-
+{-
 --- BARYPUSH
 
-eval' c@(C1 c''@(CENTER a c')) p@(BaryPush f x) | traceShow ("PUSH -----> ", show c) True = eval' (c2 ) (f (BaryBruijnX (CENTER a (CENTER x c'))))
-  where c2 = (CENTER a (CENTER x c'))
+eval' c@(C1 (CENTER a c')) (BaryPush f x) | traceShow ("PUSH -----> ", show c) True = eval' c2 (f (BaryBruijnX c2))
+  where c2 = CENTER a (CENTER x c')
 
 --eval' c@(C1 (CENTER a c')) p@(BaryPush f _) | traceShow ("PUSH -----> ", show c) True = eval' (C2 c') (f (BaryVar a))
 
 --eval' c@(C1 (CENTER a c')) (BaryPush f) | traceShow ("PUSH -----> ", show c) True = exec c' (evalB (f (eval' $ C1 (CENTER a CHALT) )))
 eval' c (BaryPush f _) | traceShow ("PUSH VAR -----> ", show c) True = exec c (\a -> evalB (f (BaryVar a)))
-
+-}
 
 
 eval' c (f `Baryapp` a) = eval' (C0 f c) a
@@ -226,16 +207,6 @@ type family Trunc (acc :: [*]) (shallow :: [*]) (deep :: [*]) :: [*] where
 
 class (index ~ Trunc '[] shallow deep) => TRUNC index shallow deep where
   trunc :: (shallow ~ (a ': sh)) => DB shallow -> DB deep -> a
-  --rebase :: TRUNC (Trunc '[] (a2 : a1 : s1) i) (a2 : a1 : s1) i => Dict (TRUNC (Trunc '[] (a2 : s1) i) (a2 : s1) i)
-  --rebase :: (shallow ~ (a ': x ': s)) => DB shallow -> DB deep -> Dict (TRUNC (Trunc '[] (a : s) deep) (a : s) deep)
-  rebase :: (shallow ~ (a ': x ': s)) => Baryon (a ': s) -> CONT deep k -> (Dict (TRUNC (Trunc '[] (a ': s) deep) (a ': s) deep), Baryon (a ': s))
-
-  shorten :: (shallow ~ (a2 ': a1 ': s1)) => (Baryon (a2 ': deep)
-                  -> Baryon (b1 ': a2 ': a1 ': s1))
-                 -> (forall (i :: [*]).
-                     TRUNC (Trunc '[] (a2 ': s1) i) (a2 ': s1) i =>
-                     Baryon (a2 ': i))
-                 -> Baryon (b1 ': a2 ': s1)
 
 instance ('[] ~ Trunc '[] (a ': shallow) deep, (a ': shallow) ~ deep) => TRUNC '[] (a ': shallow) deep where
   trunc _ (TCons a _) = trace "DONE" $ a
