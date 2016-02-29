@@ -9,23 +9,23 @@ import Data.Type.Equality
 import qualified Data.List as L
 
 
-class Lam f where
-  lam :: ((forall i . (TRUNC (Trunc '[] (a ': s) i) (a ': s) i) => f (a ': i)) -> f (b ': a ': s)) -> f ((a -> b) ': s)
-  app :: f ((a -> b) ': s) -> f (a ': s) -> f (b ': s)
+class Lam (f :: [*] -> * -> *) where
+  lam :: ((forall i . (TRUNC (Trunc '[] (a ': s) i) (a ': s) i) => f i a) -> f (a ': s) b) -> f s (a -> b)
+  app :: f s (a -> b) -> f s a -> f s b
 
-class Val f where
-  int :: Int -> f (Int ': s)
+class Val (f :: [*] -> * -> *) where
+  int :: Int -> f s Int
 
-class Eval f where
-  eval :: f (a ': s) -> a
+class Eval (f :: [*] -> * -> *) where
+  eval :: f s a -> a
 
-data Baryon s where
-  Barylam :: ((forall i . TRUNC (Trunc '[] (a ': s) i) (a ': s) i => Baryon (a ': i)) -> Baryon (b ': a ': s)) -> Baryon ((a -> b) ': s)
+data Baryon ctx s where
+  Barylam :: ((forall i . TRUNC (Trunc '[] (a ': s) i) (a ': s) i => Baryon i a) -> Baryon (a ': s) b) -> Baryon s (a -> b)
 
-  Baryapp :: Baryon ((a -> b) ': s) -> Baryon (a ': s) -> Baryon (b ': s)
-  BaryInt :: Int -> Baryon (Int ': s)
-  BaryVar :: a -> Baryon (a ': s)
-  BaryBruijnX :: TRUNC idx (a ': s') s => CONT (b ': a ': s') k -> Baryon (a ': s)
+  Baryapp :: Baryon s (a -> b) -> Baryon s a -> Baryon s b
+  BaryInt :: Int -> Baryon s Int
+  BaryVar :: a -> Baryon s a
+  BaryBruijnX :: TRUNC idx (a ': s') s => CONT (b ': a ': s') k -> Baryon s a
 
 instance Lam Baryon where
   lam = Barylam
@@ -37,16 +37,16 @@ instance Val Baryon where
 instance Eval Baryon where
   eval = evalB
 
-{-
+
 instance Functor (Baryon s) where
   fmap f = (f <$>)
 
 instance Applicative (Baryon s) where
   pure = BaryVar
   (<*>) = app
--}
 
-instance Show (Baryon s) where
+
+instance Show (Baryon ctx s) where
   show (Barylam f) = "Barylam f"
   show (Baryapp f a) = "Baryapp (" L.++show f L.++") (" L.++show a L.++")"
   show (BaryInt i) = show i
@@ -55,7 +55,7 @@ instance Show (Baryon s) where
 
 -- Here is our standard evaluator:
 --
-evalB :: Baryon (a ': s) -> a
+evalB :: Baryon s a -> a
 evalB _ | True = error "don't do evalB!"
 evalB (f `Baryapp` a) = evalB f $ evalB a
 evalB (BaryVar v) = v
@@ -64,41 +64,41 @@ evalB (Barylam f) = \x -> evalB (f (BaryVar x))
 evalB (BaryBruijnX (CENTER a _)) = a
 
 
-test :: (Lam f, Val f) => f '[Int]
+test :: (Lam f, Val f) => f '[] Int
 test = id `app` (const `app` fortytwo `app` seven)
   where id = lam (\x->x)
         const = lam (\x->lam(\_->x))
         fortytwo = int 42
         seven = int 7
 
-t0 :: Baryon '[Int]
+t0 :: Baryon '[] Int
 t0 = test
 
 test1 = (lam (\x0 -> lam (\x1 -> (trace "%%" x1))) `app` int 2) `app` int 1
 
-t1 :: Baryon '[Int]
+t1 :: Baryon '[] Int
 t1 = test1
 
 test1a = lam (\x0 -> lam (\x1 -> lam (\x2 -> x2))) `app` int 3 `app` int 2 `app` int 11
 
-t1a :: Baryon '[Int]
+t1a :: Baryon '[] Int
 t1a = test1a
 
 test1b = lam (\x0 -> lam (\x1 -> lam (\x2 -> lam (\x3 -> x3)))) `app` int 4 `app` int 3 `app` int 2 `app` int 111
 
-t1b :: Baryon '[Int]
+t1b :: Baryon '[] Int
 t1b = test1b
 
 
 test2 = lam (\x0 -> lam (\_ -> lam (\x -> x0))) `app` int 2 `app` int 1 `app` int 0
 
-t2 :: Baryon '[Int]
+t2 :: Baryon '[] Int
 t2 = test2
 
 
 -- derivation of the abstract machine
 
-eval' :: CONT (a ': s) k -> Baryon (a ': s) -> k
+eval' :: CONT (a ': s) k -> Baryon s a -> k
 
 -- IS THIS A BETTER WAY TO ELIMINATE (C1 (CENTER ...)) ???
 eval' c'@(C1 c) (Barylam f) | traceShow ("C1bruijnX", show c') True = eval' c (f (BaryBruijnX c))
@@ -187,7 +187,7 @@ instance ((i ': indx) ~ Trunc '[] (a ': shallow) (d ': deep), TRUNC indx (a ': s
 
 
 data CONT :: [*] -> * -> * where
-  C0 :: Baryon ((a -> b) ': s) -> !(CONT (b ': s) k) -> CONT (a ': s) k
+  C0 :: Baryon s (a -> b) -> !(CONT (b ': s) k) -> CONT (a ': s) k
   C1 :: !(CONT (b ': a ': s) k) -> CONT ((a -> b) ': s) k
   CENTER :: a -> !(CONT (b ': s) k) -> CONT (b ': a ': s) k
   CDROPX :: !(CONT ((a' -> b) ': s) k) -> CONT (b ': a ': s) k
