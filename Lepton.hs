@@ -8,9 +8,6 @@ import Debug.Trace (trace, traceShow, traceShowId)
 import Data.Type.Equality
 import qualified Data.List as L
 
-data Dict :: Constraint -> * where
-  Dict :: c => Dict c
-
 
 class Lam f where
   lam :: ((forall i . (TRUNC (Trunc '[] (a ': s) i) (a ': s) i) => f (a ': i)) -> f (b ': a ': s)) -> f ((a -> b) ': s)
