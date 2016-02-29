@@ -21,11 +21,11 @@ class Eval (f :: [*] -> * -> *) where
 
 data Baryon ctx s where
   Barylam :: ((forall i . TRUNC (Trunc '[] (a ': s) i) (a ': s) i => Baryon i a) -> Baryon (a ': s) b) -> Baryon s (a -> b)
-
   Baryapp :: Baryon s (a -> b) -> Baryon s a -> Baryon s b
+
   BaryInt :: Int -> Baryon s Int
   BaryVar :: a -> Baryon s a
-  BaryBruijnX :: TRUNC idx (a ': s') s => CONT (b ': a ': s') k -> Baryon s a
+  BaryBruijn :: TRUNC idx (a ': s') s => CONT (b ': a ': s') k -> Baryon s a
 
 instance Lam Baryon where
   lam = Barylam
@@ -51,7 +51,7 @@ instance Show (Baryon ctx s) where
   show (Baryapp f a) = "Baryapp (" L.++show f L.++") (" L.++show a L.++")"
   show (BaryInt i) = show i
   show (BaryVar _) = "<var>"
-  show (BaryBruijnX cont) = "PPX " L.++ show cont
+  show (BaryBruijn cont) = "PPX " L.++ show cont
 
 -- Here is our standard evaluator:
 --
@@ -61,7 +61,7 @@ evalB (f `Baryapp` a) = evalB f $ evalB a
 evalB (BaryVar v) = v
 evalB (BaryInt i) = i
 evalB (Barylam f) = \x -> evalB (f (BaryVar x))
-evalB (BaryBruijnX (CENTER a _)) = a
+evalB (BaryBruijn _) = error "Cannot look up De Bruijn index from evalB"
 
 
 test :: (Lam f, Val f) => f '[] Int
@@ -101,34 +101,27 @@ t2 = test2
 eval' :: CONT (a ': s) k -> Baryon s a -> k
 
 -- IS THIS A BETTER WAY TO ELIMINATE (C1 (CENTER ...)) ???
-eval' c'@(C1 c) (Barylam f) | traceShow ("C1bruijnX", show c') True = eval' c (f (BaryBruijnX c))
+eval' c'@(C1 c) (Barylam f) | traceShow ("C1bruijnX", show c') True = eval' c (f (BaryBruijn c))
 
 --eval' c'@(C1 c) (Barylam f) | traceShow ("C1bruijn", show c') True = eval' c (f (BaryBruijn c'))
   --where exec (CENTER c) b = exec c b
 {- introduce CENTER for entering deeper scope -}
 --eval' c'@(C1 c) (Barylam f) = exec c (evalB (f (BaryBruijn c'))) -- for now capture the stack, later just the stack pointer!
 
-
-
-
-
-
-eval' c@(CENTER x (C1 (CENTER a c'))) (Barylam f) | traceShow ("CENTERbruijnX", show c) True = eval' c2 (f (BaryBruijnX c2))
+eval' c@(CENTER x (C1 (CENTER a c'))) (Barylam f) | traceShow ("CENTERbruijnX", show c) True = eval' c2 (f (BaryBruijn c2))
   where c2 = CENTER a (CENTER x c') -- bubble x down
 
-eval' c@(CENTER y (CENTER x (C1 (CENTER a c')))) (Barylam f) | traceShow ("CENTERbruijnX!!", show c) True = eval' c2 (f (BaryBruijnX c2))
+eval' c@(CENTER y (CENTER x (C1 (CENTER a c')))) (Barylam f) | traceShow ("CENTERbruijnX!!", show c) True = eval' c2 (f (BaryBruijn c2))
   where c2 = CENTER a (CENTER y (CENTER x c')) -- bubble x, y down
 
-eval' c@(CENTER z (CENTER y (CENTER x (C1 (CENTER a c'))))) (Barylam f) | traceShow ("CENTERbruijnX!!!", show c) True = eval' c2 (f (BaryBruijnX c2))
+eval' c@(CENTER z (CENTER y (CENTER x (C1 (CENTER a c'))))) (Barylam f) | traceShow ("CENTERbruijnX!!!", show c) True = eval' c2 (f (BaryBruijn c2))
   where c2 = CENTER a (CENTER z (CENTER y (CENTER x c'))) -- bubble x, y, z down
 
 
-eval' c' (Barylam f) | traceShow ("bruijnX", show c') True = eval' c (f (BaryBruijnX c))
+eval' c' (Barylam f) | traceShow ("bruijnX", show c') True = eval' c (f (BaryBruijn c))
   where c = CDROPX c' -- EVIL! see above cases how to eliminate CDROPX
 
 
---eval' c (Barylam f) = exec c (\a -> evalB (f (BaryBruijn 0)))
-{- can we use (DEM) ? -}
 eval' c (Barylam f) | traceShow ("VAR -----> ", show c) True = exec c (\a -> evalB (f (BaryVar a)))
 
 
@@ -146,7 +139,7 @@ eval' c (BaryInt i) = exec c i
 {- ^^ expand evalB -}
 
 
-eval' c (BaryBruijnX c') | traceShow ("@@X", show c', show c) True = exec c (trunc (extract c') (extract c))
+eval' c (BaryBruijn c') | traceShow ("@@X", show c', show c) True = exec c (trunc (extract c') (extract c))
 
 
 eval' c e = exec c (eval (traceShow ("EVAL:::", c, e) e))  -- (OWK)
@@ -155,11 +148,6 @@ eval' c e = exec c (eval (traceShow ("EVAL:::", c, e) e))  -- (OWK)
 data DB :: [*] -> * where
   Nil :: DB '[]
   TCons :: t -> DB ts -> DB (t ': ts)
-
--- I might need such a beast later:
-type family EqZip (deep :: [*]) (shallow :: [*]) :: Constraint where
-  EqZip (a ': peel) '[a] = ()
-  EqZip (a ': as) (a ': bs) = EqZip as bs
 
 -- all other avenues, see git history
 
@@ -190,8 +178,7 @@ data CONT :: [*] -> * -> * where
   C0 :: Baryon s (a -> b) -> !(CONT (b ': s) k) -> CONT (a ': s) k
   C1 :: !(CONT (b ': a ': s) k) -> CONT ((a -> b) ': s) k
   CENTER :: a -> !(CONT (b ': s) k) -> CONT (b ': a ': s) k
-  CDROPX :: !(CONT ((a' -> b) ': s) k) -> CONT (b ': a ': s) k
-
+  CDROPX :: !(CONT ((a' -> b) ': s) k) -> CONT (b ': a ': s) k -- THIS NEEDS TO BE ELIMINATED!
   CHALT :: CONT '[a] a
 
 instance Show (CONT (a ': s) k) where
@@ -206,20 +193,15 @@ extract :: CONT (a ': ctx) k -> DB ctx
 extract (C1 (CENTER _ c)) = extract c -- these neutralize
 extract CHALT = Lepton.Nil
 extract (C0 _ c) = extract c
---extract (C1 (extract -> (TCons _ c))) = c
 extract (CENTER a c) = TCons a $ extract c
 extract (CDROPX c) = TCons (error $ show ("CDROPX", c)) $ extract c
-
-
 
 
 exec :: CONT (a ': s) k -> a -> k
 
 exec (CDROPX c) !f = exec c (const f)
 
-
-exec (C1 (CENTER a c)) !f = exec c (f a) -- (DEM)
-
+exec (C1 (CENTER a c)) !f = exec c (f a)
 
 exec (C0 f c) !a = eval' (C1 (CENTER a c)) f
 {- Obi-Wan helps -}
