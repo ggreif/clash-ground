@@ -152,13 +152,6 @@ eval' c (BaryBruijnX c') | traceShow ("@@X", show c', show c) True = exec c (tru
 eval' c e = exec c (eval (traceShow ("EVAL:::", c, e) e))  -- (OWK)
 
 
-
-type family Rev (acc :: [*]) (rdeep :: [*]) :: [*] where
-  Rev acc '[] = acc
-  Rev acc (a ': as) = Rev (a ': acc) as
-
-type Reverse l = Rev '[] l
-
 data DB :: [*] -> * where
   Nil :: DB '[]
   TCons :: t -> DB ts -> DB (t ': ts)
