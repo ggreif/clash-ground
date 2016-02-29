@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, RankNTypes, FlexibleInstances, UndecidableInstances, MultiParamTypeClasses, ViewPatterns, BangPatterns #-}
+{-# LANGUAGE GADTs, RankNTypes, FlexibleInstances, MultiParamTypeClasses, ViewPatterns, BangPatterns #-}
 
 module Lepton where
 
@@ -188,9 +188,7 @@ instance ((i ': indx) ~ Trunc '[] (a ': shallow) (d ': deep), TRUNC indx (a ': s
 
 data CONT :: [*] -> * -> * where
   C0 :: Baryon ((a -> b) ': s) -> !(CONT (b ': s) k) -> CONT (a ': s) k
-  --C1 :: a -> !(CONT (b ': a ': s) k) -> CONT ((a -> b) ': s) k
   C1 :: !(CONT (b ': a ': s) k) -> CONT ((a -> b) ': s) k
-  --CENTER :: !(CONT (b ': s) k) -> CONT (b ': a ': s) k
   CENTER :: a -> !(CONT (b ': s) k) -> CONT (b ': a ': s) k
   CDROPX :: !(CONT ((a' -> b) ': s) k) -> CONT (b ': a ': s) k
 
