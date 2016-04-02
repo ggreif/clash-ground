@@ -1,0 +1,46 @@
+* How application is normally done
+
+#+begin_src ditaa :file app.svg
+
+          /--\
+          |ap|
+	  +--+
+         /    \
+        f      a
+
+#+end_src
+
+* Either of both sub-nodes can be a variable
+
+so let's special case those!
+
+ - app_tree_tree
+ - app_v_tree
+ - app_tree_v
+ - app_v_v
+
+* But we still need to store the vars, right?
+
+With De Bruijn it is easier, but still...
+
+Consider:
+
+#+begin_src ditaa :file app.svg
+
+          /--\
+          |ap|
+	  \--+
+              \
+        f?     a
+
+#+end_src
+
+How can we say which /f/ is meant?
+
+Solution: store the De Bruijn index in the ap node but at the type level!
+
+* The /app_v_v/ case
+
+The first v has index 0, the second /n/. So we need flipped /app/: /ppa/
+
+
