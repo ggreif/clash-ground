@@ -54,3 +54,10 @@ The first v has index 0, the second /n/. So we need flipped /app/: /ppa/
 
 #+end_src
 
+* Summing up
+
+We can always flip now the constructor to get the variable
+with the lower De Bruijn index to the front, and transitively
+we can make sure that the in-order traversal will yield
+a "mostly increasing" indexing pattern, better suited for
+FPGA implementation because of shorter substitution templates.
