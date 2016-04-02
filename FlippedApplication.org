@@ -37,10 +37,20 @@ Consider:
 
 How can we say which /f/ is meant?
 
-Solution: store the De Bruijn index in the ap node but at the type level!
+Solution: store the De Bruijn index in the /ap/ node but at the type level!
 
 * The /app_v_v/ case
 
 The first v has index 0, the second /n/. So we need flipped /app/: /ppa/
 
+
+#+begin_src ditaa :file app.svg
+
+          /--\             /--\
+          |ap|      ===    |pa|
+	  \--/             \--/
+
+        f      a         a      f
+
+#+end_src
 
