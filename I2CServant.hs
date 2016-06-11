@@ -34,6 +34,24 @@ type ReadOne = ReadBytes 1
 data SendBytes (n :: Nat) next
 type SendOne = SendBytes 1
 
+-- We whould automatically ack.
+--  The type won't contain this junk
+-- data AckReceived
+
+
+-- ** Signatures
+
+debounce :: Signal Bool -> Signal Bool -> Signal (Bool, Bool)
+debounce = undefined
+
+flankDetect :: Eq a => Signal a -> Signal (a, Bool)
+flankDetect = undefined
+
+
+bitSlave :: Signal ((Bit, Bool), (Bit, Bool)) -- SDA, SCL + flanks
+         -> Signal (Unsigned 8) -- byte to write
+         -> Signal (Unsigned 8, (Bool, Bool, Bool), Bit) -- byte read, (START, ACK, NACK, ReSTART), SDA-out
+bitSlave = undefined
 
 -- ** Example: PCA9552
 
