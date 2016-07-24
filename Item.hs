@@ -1,4 +1,4 @@
-{-# language GADTSyntax, LambdaCase #-}
+{-# language GADTSyntax #-}
 
 module Item where
 
@@ -24,10 +24,24 @@ eval (ws, is) _ = traceShowId ((ws', is'), done ws')
         left (ws :> tail) = tail :< ws
         done (Stop :> _) = True
         done _ = False
-        ws' = left (combine (fst <$> pairing))
+        -- ws' = left (combine (fst <$> pairing))
+        ws' = combine (fst <$> pairing)
         is' = snd <$> pairing
-        combine wws = inserter <$> ws <*> rws
-        
+        --combine wws = inserter <$> ws <*> rws
+        --inserter (Applicator _) (Junk, _) = Junk
+        --inserter (Abstractor _) (_, Junk) = Junk
+        --inserter prev _ = prev
+        combine wws = collapse <$> left ws <*> left rws <*> rws--inserter <$> ws <*> rws
+        rws = fst <$> pairing
+        collapse _ (Junk,_) _ = Junk
+        collapse _ _ (_,Junk) = Junk
+        collapse a b c = traceShow (a,b,c) a
+
+-- app   abs
+-- (J,J) (?,?)
+-- (?,?) (_,J)
+-- J     J
+
         exam _ (Applicator i) (Abstractor bs) = ((Junk, Junk), bool Nothing (Just i) <$> (unpack bs :: Vec 10 Bool))
         exam is w n  = ((w, n), is)
 
