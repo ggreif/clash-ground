@@ -24,8 +24,9 @@ eval (ws, is) _ = traceShowId ((ws', is'), done ws')
         left (ws :> tail) = tail :< ws
         done (Stop :> _) = True
         done _ = False
-        ws' = left (fst.fst <$> pairing)
-        is' = left (snd <$> pairing)
+        ws' = left (combine (fst <$> pairing))
+        is' = snd <$> pairing
+        combine wws = inserter <$> ws <*> rws
         
         exam _ (Applicator i) (Abstractor bs) = ((Junk, Junk), bool Nothing (Just i) <$> (unpack bs :: Vec 10 Bool))
         exam is w n  = ((w, n), is)
