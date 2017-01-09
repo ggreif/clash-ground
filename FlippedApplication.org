@@ -61,3 +61,14 @@ with the lower De Bruijn index to the front, and transitively
 we can make sure that the in-order traversal will yield
 a "mostly increasing" indexing pattern, better suited for
 FPGA implementation because of shorter substitution templates.
+
+* Can we enforce this statically?
+
+Idea: Encode the /monotonically increasing/ De Bruijn indices as a GADT.
+      This will validate the concept.
+
+** Trouble
+I expect that we are in trouble when the following case arises:
+#+begin_src haskell
+(v1 (v0 v2))
+#+end_src
