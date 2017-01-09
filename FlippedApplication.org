@@ -4,7 +4,7 @@
 
           /--\
           |ap|
-	  +--+
+          +--+
          /    \
         f      a
 
@@ -29,7 +29,7 @@ Consider:
 
           /--\
           |ap|
-	  \--+
+          \--+
               \
         f?     a
 
@@ -48,7 +48,7 @@ The first v has index 0, the second /n/. So we need flipped /app/: /ppa/
 
           /--\             /--\
           |ap|      ===    |pa|
-	  \--/             \--/
+          \--/             \--/
 
         f      a         a      f
 
