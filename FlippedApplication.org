@@ -72,3 +72,14 @@ I expect that we are in trouble when the following case arises:
 #+begin_src haskell
 (v1 (v0 v2))
 #+end_src
+
+** How can we resolve the trouble?
+
+As some =(t1 `app` t2)= situations unavoidably lead to non-monotonic variable arrangements
+how can we salvage the situation?
+
+I propose a simple solution: when for a subtree monotonicity is impossible to achieve
+by flipping the application, then make that subtree /indirect/, i.e. eta-expand it and
+assign it to another heap cell or range, leaving a /pointer to the lambda/ behind.
+The remaining lambdas then both can be monotonic, and thus block-like or inline, but
+this time we need to deal with the additional possibility of pointers.
