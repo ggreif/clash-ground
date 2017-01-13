@@ -75,7 +75,7 @@ I expect that we are in trouble when the following case arises:
 
 ** How can we resolve the trouble?
 
-As some =(t1 `app` t2)= situations unavoidably lead to non-monotonic variable arrangements
+As some =(t1 `app` t2)= situations unavoidably lead to non-monotonic variable arrangements,
 how can we salvage the situation?
 
 I propose a simple solution: when for a subtree monotonicity is impossible to achieve
