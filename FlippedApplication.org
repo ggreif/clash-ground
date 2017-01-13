@@ -83,3 +83,20 @@ by flipping the application, then make that subtree /indirect/, i.e. eta-expand 
 assign it to another heap cell or range, leaving a /pointer to the lambda/ behind.
 The remaining lambdas then both can be monotonic, and thus block-like or inline, but
 this time we need to deal with the additional possibility of pointers.
+
+
+Consider:
+#+BEGIN_SRC haskell
+\a b c d . ((a c) (d b))
+#+END_SRC
+  /flip second tree/
+#+BEGIN_SRC haskell
+\a b c d . ((a c) (b <-> d))
+#+END_SRC
+  /outline second tree/
+#+BEGIN_SRC haskell
+\a c . ((a c) v)
+              v
+              v
+              \b d . (b <-> d)
+#+END_SRC
