@@ -110,7 +110,7 @@ with custom logic around them.
 We probably want many small BRAMs and a few big ones.
 
 We have to time-schedule big lambdas. When the lambda does not fit into the BRAM
-then we need to cut it into /run/s. Substitution will see run0 then run1 etc.
+then we need to cut it into /runs/. Substitution will see run0 then run1 etc.
 This may mean that we have to differentiate between /spacial/ and /temporal/ pointers.
 
 Pointers address into BRAMs.
